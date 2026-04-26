@@ -47,7 +47,7 @@ In <2 hours: inventory **what would actually go in the bundle vs. what's user-sp
 - **Plugin licensing** — third-party Obsidian plugins (Dataview, Templater, Kanban) can't generally be redistributed; ship a manifest that the installer pulls at install time, or document the plugin set as a prerequisite dependency?
 - **`CLAUDE.md` / `AGENTS.md` story** — package can't ship Andy's specific `CLAUDE.md`, but probably ships a template version adopters customize. How does the agent-portability story (per [[agent-portability]]) land in the package?
 - **Relationship to OpenDev** — OpenDev's vault-mirror approach effectively produces a generic vault artifact (vault separated from code). Is OpenDev's output the input to system-o's packaging? Or do they diverge in scope?
-- **Public-availability check** — domain (`system-o.com` / `.dev`?), GitHub org, npm package name (if applicable). Separate from the in-workspace name-claim check (already cleared 2026-04-26).
+- **Public-availability check** — domain `system-o.org` registered (April 26, 2026); not yet pointed. Repo lives at `presspausegarage/system-o` — open question whether a dedicated `system-o` GitHub org makes sense once contributors arrive. npm package name TBD if a scaffolder ships.
 - **Cross-references from sibling launchpad items** — OpenDev should reference system-o as parent umbrella once stable. Defer until system-o has its `apps/system-o/_meta/` scaffolding so the back-reference resolves cleanly.
 
 ## Notes
