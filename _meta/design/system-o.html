@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>system-o</title>
+  <link rel="stylesheet" href="colors_and_type.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root {
+      height: 100%; width: 100%;
+      background: #06080f;
+      display: flex; align-items: center; justify-content: center;
+      --font-mono: "IBM Plex Mono", Consolas, monospace;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    /* bluer text palette */
+    :root {
+      --tx1: #c8d8f8;   /* primary — blue-white */
+      --tx2: #7a9ad4;   /* secondary — mid blue */
+      --tx3: #445278;   /* tertiary — dim blue */
+      --tx4: #263050;   /* ghost — barely visible */
+    }
+    @keyframes cursor   { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+    @keyframes typeIn   { from{opacity:0;transform:translateX(-2px)} to{opacity:1;transform:none} }
+    @keyframes slideDown{ from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+    @keyframes oblink   { 0%,88%,100%{opacity:1} 92%{opacity:0} }
+
+    .hud-tab {
+      font-family: var(--font-mono); font-size: 9.5px;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      padding: 5px 12px; border: none; background: transparent;
+      cursor: pointer; border-radius: 2px;
+      transition: background 0.12s, color 0.12s; white-space: nowrap;
+      color: var(--tx3);
+    }
+    .hud-tab:hover { background: rgba(100,140,255,0.07); color: var(--tx2); }
+    .hud-tab.active { background: rgba(61,168,142,0.14); color: #3da88e !important; }
+    .term-line { animation: typeIn 0.1s ease both; }
+    .data-row:hover { background: rgba(100,140,255,0.04) !important; }
+    ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: #1e2a4a; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "oboySize": 1,
+  "showScanlines": false
+}/*EDITMODE-END*/;
+
+/* ── DATA ────────────────────────────────────────────────────────────────── */
+const PIPELINE = [
+  { id:'triage',  label:'triage inbox',    time:'02:00', h:2, m:0,  status:'ok',   log:'junk=0 proposed=0 skipped=1' },
+  { id:'purge',   label:'purge sewerpipe', time:'02:15', h:2, m:15, status:'ok',   log:'deleted=0 · 0 MB' },
+  { id:'backup',  label:'backup dev dir',  time:'02:30', h:2, m:30, status:'ok',   log:'6345 files · 440 MB' },
+  { id:'radar',   label:'build radar',     time:'02:45', h:2, m:45, status:'warn', log:'4 URLs flagged / 193 links OK' },
+  { id:'sweep',   label:'sweep handoffs',  time:'02:50', h:2, m:50, status:'ok',   log:'7 archived · 4 standing' },
+  { id:'report',  label:'daily report',    time:'03:30', h:3, m:30, status:'ok',   log:'journal built' },
+];
+const HANDOFFS = [
+  { slug:'04-24 security',      date:'Apr 24', age:2, note:'sprint never executed' },
+  { slug:'04-26b friction.ceo', date:'Apr 26', age:0, note:'lineup awaiting approval' },
+  { slug:'04-26d lifecycle',    date:'Apr 26', age:0, note:null },
+  { slug:'04-26g markdown-os',  date:'Apr 26', age:0, note:null },
+];
+const TERM_LINES = [
+  { color:'#263050', text:'Windows PowerShell 7.4.0' },
+  { color:'#263050', text:'Copyright (C) Microsoft Corporation.' },
+  { color:'#263050', text:'' },
+  { color:'#556090', text:'PS C:\\dev> ./_meta/scripts/triage-inbox.ps1' },
+  { color:'#263050', text:'Windows PowerShell 7.4.0' },
+  { color:'#3a5888', text:'  · scanned 1 file · junk=0 proposed=0 skipped=1' },
+  { color:'#3da88e', text:'[02:00] Done.' },
+  { color:'#263050', text:'' },
+  { color:'#556090', text:'PS C:\\dev> ./_meta/scripts/purge-sewerpipe.ps1' },
+  { color:'#3da88e', text:'[02:15] Purge sewerpipe — starting' },
+  { color:'#3a5888', text:'  · deleted=0 total=0MB (30d retention window)' },
+  { color:'#3da88e', text:'[02:15] Done.' },
+  { color:'#263050', text:'' },
+  { color:'#556090', text:'PS C:\\dev> ./_meta/scripts/backup-dev.ps1' },
+  { color:'#3da88e', text:'[02:30] Backup dev directory — starting' },
+  { color:'#3a5888', text:'  · robocopy /MIR C:\\dev\\ I:\\devbak\\' },
+  { color:'#3a5888', text:'  · 6345 files · 440.33 MB · 0 errors' },
+  { color:'#3da88e', text:'[02:30] Done.' },
+  { color:'#263050', text:'' },
+  { color:'#556090', text:'PS C:\\dev> ./_meta/scripts/build-radar-digest.ps1' },
+  { color:'#c07830', text:'[02:45] Radar digest — 4 URLs flagged (HTTP 403)' },
+  { color:'#3a5888', text:'  · brevardfl.gov · marionfl.org ×2 · osceola.org' },
+  { color:'#3a5888', text:'  · 193/193 internal links OK' },
+  { color:'#c07830', text:'[02:45] Done — warnings → _radar/_digests/2026-04-26.md' },
+  { color:'#263050', text:'' },
+  { color:'#556090', text:'PS C:\\dev> ./_meta/scripts/sweep-handoffs.ps1' },
+  { color:'#3da88e', text:'[02:50] Sweep — 7 complete archived · 4 standing' },
+  { color:'#263050', text:'' },
+  { color:'#556090', text:'PS C:\\dev> ./_meta/scripts/build-daily-report.ps1' },
+  { color:'#3da88e', text:'[03:30] Daily report — journal entry built' },
+  { color:'#3da88e', text:'[03:30] Nightly chain complete. All 6 tasks run.' },
+  { color:'#263050', text:'' },
+  { color:'#556090', text:'PS C:\\dev> ▌' },
+];
+
+/* ── ASCII O-BOY — eyes + mouth only ────────────────────────────────────── */
+// Each expression: [eyes, mouth]
+const EXPR = {
+  idle:      ['o  o', ' ~ '],
+  happy:     ['˄  ˄', ' ‿ '],
+  blink:     ['–  –', ' ~ '],
+  wink:      ['o  –', ' ~ '],
+  warn:      ['o  o', ' ‾ '],
+  surprised: ['O  O', ' o '],
+};
+// Sequence for ok mood: idle → blink → idle × many → happy → idle → wink
+const SEQ_OK   = ['idle','idle','idle','idle','idle','idle','blink','idle','idle','idle','idle','idle','idle','idle','happy','idle','idle','idle','idle','wink','idle','idle','idle','idle'];
+const SEQ_WARN = ['warn','warn','warn','warn','blink','warn','warn','warn','warn','warn','blink','warn'];
+
+function OBoy({ mood = 'ok' }) {
+  const [idx, setIdx] = useState(0);
+  const seq = mood === 'warn' ? SEQ_WARN : SEQ_OK;
+
+  useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => { i = (i+1) % seq.length; setIdx(i); }, 320);
+    return () => clearInterval(id);
+  }, [mood]);
+
+  const expr = EXPR[seq[idx]] || EXPR.idle;
+  const color = mood === 'warn' ? '#c07830' : '#3da88e';
+  const glow  = mood === 'warn' ? 'rgba(192,120,48,0.55)' : 'rgba(61,168,142,0.55)';
+
+  return (
+    <div style={{ fontFamily:'var(--font-mono)', fontSize:13, lineHeight:'18px', color, textShadow:`0 0 10px ${glow}`, userSelect:'none', letterSpacing:'0.04em' }}>
+      <div>{expr[0]}</div>
+      <div>{expr[1]}</div>
+    </div>
+  );
+}
+
+/* ── CLOCK ───────────────────────────────────────────────────────────────── */
+function getNextTask(now) {
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const next = [...PIPELINE]
+    .map(t => ({ ...t, diff: ((t.h*60+t.m - nowMin + 1440) % 1440) || 1440 }))
+    .sort((a,b) => a.diff-b.diff)[0];
+  const h = Math.floor(next.diff/60), m = next.diff%60;
+  return { name:next.id, label: h>0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m` };
+}
+function useClock() {
+  const [s, setS] = useState({ time:'', date:'', next:null });
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      setS({
+        time: now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'America/New_York'}),
+        date: now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'America/New_York'}),
+        next: getNextTask(now),
+      });
+    };
+    tick(); const id=setInterval(tick,1000); return ()=>clearInterval(id);
+  },[]);
+  return s;
+}
+
+/* ── ATOMS ───────────────────────────────────────────────────────────────── */
+function Dot({status='idle',size=6}) {
+  const c={ok:'#3da88e',warn:'#c07830',error:'#d9534f',idle:'#445278',info:'#5c86d6'};
+  return <span style={{display:'inline-block',width:size,height:size,borderRadius:'50%',background:c[status]||c.idle,flexShrink:0}}/>;
+}
+function M({children,size=11,color='var(--tx2)',bold,style}) {
+  return <span style={{fontFamily:'var(--font-mono)',fontSize:size,color,fontWeight:bold?600:400,lineHeight:1.4,...style}}>{children}</span>;
+}
+function Lbl({children,color='var(--tx3)'}) {
+  return <span style={{fontFamily:'var(--font-mono)',fontSize:9.5,letterSpacing:'0.07em',textTransform:'uppercase',color,fontWeight:500}}>{children}</span>;
+}
+
+/* ── WALL CLOCK ──────────────────────────────────────────────────────────── */
+function WallClock({time,date,next}) {
+  return (
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'0 22px',
+      borderLeft:'1px solid rgba(100,140,255,0.08)',borderRight:'1px solid rgba(100,140,255,0.08)'}}>
+      <div style={{fontFamily:'var(--font-mono)',fontSize:24,fontWeight:600,color:'var(--tx1)',
+        letterSpacing:'-0.02em',lineHeight:1,textShadow:'0 0 18px rgba(100,140,255,0.25)'}}>
+        {time}
+      </div>
+      <div style={{display:'flex',gap:10,marginTop:4,alignItems:'center'}}>
+        <M size={10} color="var(--tx3)">{date} ET</M>
+        {next && <>
+          <span style={{color:'var(--tx4)',fontSize:10}}>·</span>
+          <div style={{display:'flex',alignItems:'center',gap:5}}>
+            <Dot status="info" size={5}/>
+            <M size={10} color="#5c86d6">→ {next.name} in {next.label}</M>
+          </div>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+/* ── PANELS ──────────────────────────────────────────────────────────────── */
+function PipelinePanel() {
+  const [hov,setHov]=useState(null);
+  return (
+    <div style={{padding:'16px 20px'}}>
+      <div style={{display:'flex',alignItems:'flex-start',gap:0,marginBottom:12}}>
+        {PIPELINE.map((s,i)=>{
+          const isHov=hov===i, isWarn=s.status==='warn';
+          const col=isWarn?'#c07830':'#3da88e';
+          return (
+            <React.Fragment key={s.id}>
+              <div onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}
+                style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,flex:1,cursor:'default'}}>
+                <div style={{width:30,height:30,borderRadius:'50%',
+                  background:isHov?(isWarn?'rgba(192,120,48,0.14)':'rgba(61,168,142,0.12)'):'#0d1120',
+                  border:`1.5px solid ${col}`,display:'flex',alignItems:'center',justifyContent:'center',
+                  transition:'background 0.12s',boxShadow:isHov?`0 0 10px ${isWarn?'rgba(192,120,48,0.2)':'rgba(61,168,142,0.2)'}`:undefined}}>
+                  <M size={11} color={col}>{isWarn?'!':'v'}</M>
+                </div>
+                <M size={9.5} color={isHov?'var(--tx1)':'var(--tx2)'} style={{textAlign:'center',lineHeight:1.2,whiteSpace:'nowrap'}}>{s.id}</M>
+                <M size={9} color="var(--tx3)" style={{textAlign:'center'}}>{s.time}</M>
+              </div>
+              {i<PIPELINE.length-1&&<div style={{flex:1,height:1.5,marginTop:14,
+                background:isWarn?'linear-gradient(90deg,#c07830,rgba(192,120,48,0.08))':'linear-gradient(90deg,#3da88e,rgba(61,168,142,0.08))',opacity:0.5}}/>}
+            </React.Fragment>
+          );
+        })}
+      </div>
+      <div style={{padding:'8px 12px',background:'#0a0d1a',border:'1px solid #1a2040',borderRadius:2,minHeight:32,display:'flex',alignItems:'center',gap:8}}>
+        {hov!==null?(<>
+          <Dot status={PIPELINE[hov].status==='warn'?'warn':'ok'} size={6}/>
+          <M size={11} color="var(--tx2)">{PIPELINE[hov].label} —</M>
+          <M size={11} color="var(--tx3)">{PIPELINE[hov].log}</M>
+        </>):<M size={11} color="var(--tx4)">hover a step to inspect · last run 03:30 ET · 5/6 ok · 1 warn</M>}
+      </div>
+    </div>
+  );
+}
+
+function StatusPanel() {
+  const cards=[
+    {label:'Inbox',    val:'0',   sub:'items pending',  status:'ok'},
+    {label:'Pipeline', val:'5/6', sub:'1 warn (radar)', status:'warn'},
+    {label:'Radar',    val:'4',   sub:'URLs flagged',    status:'warn'},
+    {label:'Handoffs', val:'4',   sub:'standing',        status:'idle'},
+  ];
+  const vc={ok:'#3da88e',warn:'#c07830',idle:'var(--tx3)'};
+  return (
+    <div style={{padding:'14px 18px',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
+      {cards.map(c=>(
+        <div key={c.label} style={{background:'#0a0d1a',border:'1px solid #1a2040',borderRadius:2,padding:'11px 13px'}}>
+          <Lbl color="var(--tx3)">{c.label}</Lbl>
+          <div style={{fontFamily:'var(--font-mono)',fontSize:26,fontWeight:600,color:vc[c.status],lineHeight:1,marginTop:6,letterSpacing:'-0.02em'}}>{c.val}</div>
+          <M size={10} color="var(--tx3)" style={{display:'block',marginTop:4}}>{c.sub}</M>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SchedulePanel() {
+  const nowH=new Date().getHours();
+  const slots=[0,1,2,3,4,6,9,12,18,21];
+  const byHour={};
+  PIPELINE.forEach(t=>{if(!byHour[t.h])byHour[t.h]=[];byHour[t.h].push(t);});
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr'}}>
+      <div style={{borderRight:'1px solid #1a2040',padding:'10px 0',overflow:'auto'}}>
+        <div style={{padding:'0 14px 7px',borderBottom:'1px solid rgba(255,255,255,0.03)',marginBottom:2}}>
+          <Lbl>24h timeline</Lbl>
+        </div>
+        {slots.map(h=>{
+          const tasks=byHour[h]||[], isNow=nowH===h;
+          return (
+            <div key={h} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'4px 14px',background:isNow?'rgba(61,168,142,0.04)':'transparent'}}>
+              <M size={10} color={isNow?'#3da88e':'var(--tx4)'} style={{width:32,paddingTop:1,flexShrink:0}}>{String(h).padStart(2,'0')}:00</M>
+              <div style={{flex:1}}>
+                {tasks.length>0?tasks.map(t=>(
+                  <div key={t.id} style={{display:'flex',alignItems:'center',gap:5}}>
+                    <Dot status={t.status} size={4}/>
+                    <M size={10} color="var(--tx2)">{t.id}</M>
+                  </div>
+                )):<span style={{color:'var(--tx4)',fontSize:10,fontFamily:'var(--font-mono)'}}>·</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{padding:'10px 0',overflow:'auto'}}>
+        <div style={{padding:'0 14px 7px',borderBottom:'1px solid rgba(255,255,255,0.03)',marginBottom:2}}>
+          <Lbl>Upcoming</Lbl>
+        </div>
+        <div style={{padding:'10px 14px',display:'flex',flexDirection:'column',gap:8}}>
+          <div style={{padding:'8px 11px',background:'rgba(92,134,214,0.07)',border:'1px solid rgba(92,134,214,0.15)',borderRadius:2}}>
+            <M size={10} color="#5c86d6" bold style={{display:'block'}}>OpenDev decide-by</M>
+            <M size={10} color="var(--tx3)" style={{display:'block',marginTop:3}}>2026-05-17 09:00 ET · 21d</M>
+          </div>
+          <div style={{padding:'8px 11px',background:'rgba(255,255,255,0.02)',border:'1px solid #1a2040',borderRadius:2}}>
+            <M size={10} color="var(--tx1)" bold style={{display:'block'}}>mobile-copy-edits</M>
+            <M size={10} color="var(--tx3)" style={{display:'block',marginTop:3}}>2026-05-26 decide-by · 30d</M>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HandoffsPanel() {
+  return (
+    <div>
+      {HANDOFFS.map((h,i)=>(
+        <div key={h.slug} className="data-row" style={{display:'flex',alignItems:'center',gap:10,padding:'8px 18px',
+          borderBottom:i<HANDOFFS.length-1?'1px solid rgba(255,255,255,0.025)':'none'}}>
+          <Dot status={h.age>1?'warn':'idle'} size={6}/>
+          <M size={11} color="var(--tx2)" style={{flex:1}}>{h.slug}</M>
+          <M size={10} color="var(--tx3)">{h.date}</M>
+          {h.note&&<M size={10} color="#c07830" style={{maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{h.note}</M>}
+        </div>
+      ))}
+      <div style={{padding:'8px 18px',borderTop:'1px solid rgba(255,255,255,0.025)'}}>
+        <M size={10} color="var(--tx4)">sweep daily 02:50 · complete handoffs archived after 7d</M>
+      </div>
+    </div>
+  );
+}
+
+/* ── TERMINAL ────────────────────────────────────────────────────────────── */
+function Terminal({scanlines}) {
+  const [vis,setVis]=useState(0);
+  const ref=useRef(null);
+  useEffect(()=>{
+    let i=0;
+    const id=setInterval(()=>{ i++; setVis(i); if(i>=TERM_LINES.length) clearInterval(id); },85);
+    return ()=>clearInterval(id);
+  },[]);
+  useEffect(()=>{ if(ref.current) ref.current.scrollTop=ref.current.scrollHeight; },[vis]);
+  return (
+    <div ref={ref} style={{flex:1,overflow:'auto',padding:'14px 20px',background:'#060810',position:'relative'}}>
+      {scanlines&&<div style={{position:'absolute',inset:0,background:'repeating-linear-gradient(0deg,rgba(0,0,0,0) 0px,rgba(0,0,0,0) 3px,rgba(0,0,0,0.05) 3px,rgba(0,0,0,0.05) 4px)',pointerEvents:'none',zIndex:2}}/>}
+      <div style={{fontFamily:'var(--font-mono)',fontSize:12,lineHeight:1.8,position:'relative',zIndex:1}}>
+        {TERM_LINES.slice(0,vis).map((line,i)=>(
+          <div key={i} className="term-line" style={{color:line.color}}>{line.text||'\u00a0'}</div>
+        ))}
+        {vis>=TERM_LINES.length&&<span style={{display:'inline-block',width:8,height:13,background:'#556090',verticalAlign:'text-bottom',animation:'cursor 1.1s step-end infinite'}}/>}
+      </div>
+    </div>
+  );
+}
+
+/* ── HUD BAR ─────────────────────────────────────────────────────────────── */
+const TABS=['STATUS','PIPELINE','SCHEDULE','HANDOFFS'];
+
+function HUDBar({activeTab,setActiveTab,clock,oboyMood}) {
+  return (
+    <div style={{background:'#0b0e1e',borderBottom:'1px solid #1a2240',flexShrink:0,
+      boxShadow:'0 2px 18px rgba(0,0,0,0.5),0 1px 0 rgba(61,168,142,0.1) inset'}}>
+      <div style={{display:'flex',alignItems:'center',gap:0,height:62,padding:'0 18px'}}>
+
+        {/* o-boy ASCII + label */}
+        <div style={{display:'flex',alignItems:'center',gap:12,paddingRight:18,
+          borderRight:'1px solid rgba(100,140,255,0.1)',marginRight:12,height:'100%'}}>
+          <OBoy mood={oboyMood}/>
+          <div style={{display:'flex',flexDirection:'column',gap:2}}>
+            <div style={{fontFamily:'var(--font-mono)',fontSize:13,fontWeight:600,color:'var(--tx1)',letterSpacing:'-0.01em',lineHeight:1}}>
+              system<span style={{color:'#3da88e'}}>-o</span>
+            </div>
+            <M size={9} color="var(--tx4)" style={{display:'block'}}>o-boy · v0.1.0</M>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{display:'flex',gap:2,marginRight:'auto'}}>
+          {TABS.map(tab=>(
+            <button key={tab}
+              className={`hud-tab${activeTab===tab?' active':''}`}
+              onClick={()=>setActiveTab(activeTab===tab?null:tab)}
+            >{tab}</button>
+          ))}
+        </div>
+
+        {/* Clock */}
+        <WallClock time={clock.time} date={clock.date} next={clock.next}/>
+
+        {/* Status pills */}
+        <div style={{display:'flex',alignItems:'center',gap:7,marginLeft:18}}>
+          {[{label:'0 inbox',status:'ok'},{label:'4 flagged',status:'warn'},{label:'4 handoffs',status:'idle'}].map(p=>(
+            <div key={p.label} style={{display:'flex',alignItems:'center',gap:5,
+              background:'rgba(100,140,255,0.04)',border:'1px solid rgba(100,140,255,0.08)',
+              borderRadius:2,padding:'4px 9px'}}>
+              <Dot status={p.status} size={5}/>
+              <M size={10} color={p.status==='warn'?'#c07830':p.status==='ok'?'var(--tx2)':'var(--tx3)'}>{p.label}</M>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Expanded panel */}
+      {activeTab&&(
+        <div style={{borderTop:'1px solid #1a2240',animation:'slideDown 0.16s ease both',
+          maxHeight:256,overflow:'auto',background:'#090c18'}}>
+          {activeTab==='STATUS'   &&<StatusPanel/>}
+          {activeTab==='PIPELINE' &&<PipelinePanel/>}
+          {activeTab==='SCHEDULE' &&<SchedulePanel/>}
+          {activeTab==='HANDOFFS' &&<HandoffsPanel/>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── WINDOW ──────────────────────────────────────────────────────────────── */
+function AppWindow({children,oboyMood}) {
+  return (
+    <div style={{
+      width:1080,borderRadius:12,overflow:'hidden',
+      border:'1px solid #1a2240',
+      boxShadow:'0 0 0 1px rgba(61,168,142,0.1),0 40px 80px rgba(0,0,0,0.8)',
+      display:'flex',flexDirection:'column',background:'#060810',
+    }}>
+      {/* Teal top rim */}
+      <div style={{height:2,flexShrink:0,background:'linear-gradient(90deg,transparent,rgba(61,168,142,0.6) 30%,rgba(61,168,142,0.8) 50%,rgba(61,168,142,0.3) 75%,transparent)'}}/>
+      {/* Title bar */}
+      <div style={{height:38,flexShrink:0,background:'#080b18',borderBottom:'1px solid #131b34',display:'flex',alignItems:'center',gap:14,padding:'0 16px'}}>
+        <div style={{display:'flex',gap:7}}>
+          {['#ff5f57','#ffbd2e','#28c840'].map((c,i)=>(
+            <div key={i} style={{width:12,height:12,borderRadius:'50%',background:c,opacity:0.8}}/>
+          ))}
+        </div>
+        <M size={11} color="var(--tx4)" style={{flex:1,textAlign:'center'}}>system-o · C:\dev\ · PS 7.4.0</M>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* ── APP ─────────────────────────────────────────────────────────────────── */
+const DESIGN_W = 1080;
+
+function useScale() {
+  const [scale,setScale]=useState(1);
+  useEffect(()=>{
+    const calc=()=>{
+      const sx=window.innerWidth*0.97/DESIGN_W;
+      const sy=window.innerHeight*0.97/760;
+      setScale(Math.min(sx,sy,1));
+    };
+    calc();
+    window.addEventListener('resize',calc);
+    return ()=>window.removeEventListener('resize',calc);
+  },[]);
+  return scale;
+}
+
+function App() {
+  const [tweaks,setTweak]=useTweaks(TWEAK_DEFAULTS);
+  const [activeTab,setActiveTab]=useState(null);
+  const clock=useClock();
+  const scale=useScale();
+  const oboyMood=activeTab==='PIPELINE'?'warn':activeTab==='HANDOFFS'?'warn':'ok';
+
+  return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:'100vw',height:'100vh',background:'#06080f',overflow:'hidden'}}>
+      <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 50% 55%,rgba(61,168,142,0.04) 0%,transparent 55%)',pointerEvents:'none'}}/>
+      <div style={{transform:`scale(${scale})`,transformOrigin:'center center'}}>
+        <AppWindow oboyMood={oboyMood}>
+          <HUDBar activeTab={activeTab} setActiveTab={setActiveTab} clock={clock} oboyMood={oboyMood}/>
+          <Terminal scanlines={tweaks.showScanlines}/>
+        </AppWindow>
+      </div>
+
+      <TweaksPanel>
+        <TweakSection label="Terminal"/>
+        <TweakToggle label="Scanlines" value={tweaks.showScanlines} onChange={v=>setTweak('showScanlines',v)}/>
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

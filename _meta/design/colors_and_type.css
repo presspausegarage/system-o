@@ -1,0 +1,162 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Press Pause Garage — Design Tokens
+   Lifted verbatim from packages/app/src/styles/app.css in health-integrate.
+   These tokens power both Health Integrate and VaultCast desktop surfaces.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+
+  /* ── Surfaces (darkest → lightest) ────────────────────────────────────── */
+  --bg:         #0b0e18;   /* window background, deepest canvas             */
+  --bg-2:       #111524;   /* sidebar / left rail / secondary panels        */
+  --surface:    #161b2e;   /* cards, buttons, pills, table headers          */
+  --surface-2:  #1c2340;   /* elevated popups (picker menus, modals)        */
+  --border:     #242d4c;   /* default hairline                              */
+  --border-2:   #2d3760;   /* elevated surface hairline                     */
+
+  /* ── Foreground / text scale ──────────────────────────────────────────── */
+  --text:       #e5e9f4;   /* primary body text + headings                  */
+  --text-2:     #9aa5c3;   /* secondary, descriptions, labels               */
+  --text-3:     #5e6884;   /* tertiary, metadata, muted mono                */
+
+  /* ── Accents (semantic) ───────────────────────────────────────────────── */
+  --accent:       #3da88e; /* muted teal — success, selection, primary CTA  */
+  --accent-soft:  rgba(61, 168, 142, 0.14);
+  --accent-hover: #4ebda0;
+  --blue:         #5c86d6; /* info, edit affordance, focused field          */
+  --blue-soft:    rgba(92, 134, 214, 0.14);
+  --amber:        #d88a3a; /* warnings, lint hits, dirty/edited state       */
+  --amber-soft:   rgba(216, 138, 58, 0.10);
+  --red:          #d9534f; /* errors, destructive                           */
+  --red-soft:     rgba(217, 83, 79, 0.14);
+  --purple:       #8a6dd4; /* reserved — picklist type-5 marker             */
+
+  /* ── Geometry ─────────────────────────────────────────────────────────── */
+  --radius:     8px;       /* popup / modal / large cards                    */
+  --radius-sm:  5px;       /* buttons, inputs, small cards                   */
+  --radius-pill: 10px;     /* badges, metadata pills                         */
+  --radius-xs:  3px;       /* inline inputs, tiny chips                      */
+
+  /* ── Spacing (informal scale observed in source) ──────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 14px;
+  --space-7: 16px;
+  --space-8: 18px;
+  --space-9: 20px;
+
+  /* ── Elevation ────────────────────────────────────────────────────────── */
+  --shadow-popup: 0 10px 40px rgba(0, 0, 0, 0.5);
+
+  /* ── Motion ───────────────────────────────────────────────────────────── */
+  --t-fast: 0.12s;         /* color / border / background hover swaps        */
+  --t-med:  0.15s;         /* disclosure arrows, tabs                        */
+
+  /* ── Typography ───────────────────────────────────────────────────────── */
+  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Mono stack is Consolas-first — user preference. IBM Plex Mono is the
+     closest Google Fonts analogue (no ligatures, similar stroke + proportions)
+     and loads as the web fallback when Consolas isn't installed. */
+  --font-mono: Consolas, "IBM Plex Mono", Menlo, "Courier New", monospace;
+
+  /* Type scale observed in source (desktop-dense) */
+  --fs-micro: 10.5px; /* caption / mono uppercase label (Consolas)*/
+  --fs-xs:    10px;  /* metadata, sub-labels, tag text            */
+  --fs-sm:    11px;  /* buttons, table rows, list items, inputs   */
+  --fs-base:  12px;  /* nav items, secondary copy                 */
+  --fs-md:    13px;  /* body default, field detail name           */
+  --fs-lg:    14px;  /* sidebar title, section title              */
+  --fs-xl:    16px;  /* template title, view heading              */
+  --fs-2xl:   22px;  /* placeholder / route title                 */
+
+  --lh-tight: 1.4;
+  --lh-base:  1.5;
+  --lh-copy:  1.6;
+
+  /* Letter-spacing — matters for the mono-uppercase caption pattern */
+  --tracking-caption:  0.06em;
+  --tracking-label:    0.05em;
+  --tracking-wide:     0.08em;
+  --tracking-title:    -0.01em;   /* headings pull tighter */
+  --tracking-hero:     -0.02em;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Semantic element styles — drop these into any product surface.
+   ───────────────────────────────────────────────────────────────────────── */
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--fs-md);
+  line-height: var(--lh-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, .h1 {
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-hero);
+  color: var(--text);
+}
+
+h2, .h2 {
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-title);
+  color: var(--text);
+}
+
+h3, .h3 {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: var(--tracking-title);
+  color: var(--text);
+}
+
+/* Section / group labels — tiny mono uppercase caption. Used everywhere:
+   sidebar group headers, panel titles, table column heads, field detail
+   labels. This is the signature type treatment of the design system. */
+.caption,
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+/* Same caption but colored — marks which color-semantic a panel belongs to */
+.caption--accent { color: var(--accent); }
+.caption--blue   { color: var(--blue); }
+.caption--amber  { color: var(--amber); }
+
+p {
+  font-size: var(--fs-md);
+  line-height: var(--lh-copy);
+  color: var(--text-2);
+}
+
+code, .mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text);
+}
+
+/* Metadata pill — mono 9–10px, pill radius, hairline border, surface bg. */
+.meta-pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--text-3);
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
