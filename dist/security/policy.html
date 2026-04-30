@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vulnerability Disclosure Policy — system-o</title>
+<meta name="description" content="Responsible disclosure policy for system-o.org. Reporting channels, scope, safe harbor, and coordinated disclosure terms." />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0b0e18; --surface: #141829; --border: #242d4c;
+    --text: #e5e9f4; --text-2: #9aa5c3; --accent: #00c8a0;
+    --mono: 'JetBrains Mono', monospace; --sans: 'DM Sans', sans-serif;
+  }
+  html, body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+  body { padding: 4rem 1.5rem; min-height: 100vh; }
+  main { max-width: 720px; margin: 0 auto; }
+  a { color: var(--accent); }
+  a:hover { text-decoration: underline; }
+  h1 { font-family: var(--mono); font-size: 1.6rem; font-weight: 700; margin-bottom: 0.5rem; }
+  h2 { font-family: var(--mono); font-size: 1.1rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem; color: var(--text); }
+  p { margin-bottom: 1rem; color: var(--text-2); }
+  p strong { color: var(--text); }
+  ul { margin-bottom: 1rem; padding-left: 1.25rem; color: var(--text-2); }
+  li { margin-bottom: 0.4rem; }
+  code { font-family: var(--mono); background: var(--surface); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.9em; }
+  .effective { font-family: var(--mono); color: var(--text-2); font-size: 0.85rem; margin-bottom: 2rem; }
+  .nav { font-family: var(--mono); font-size: 0.85rem; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+  .nav a { color: var(--text-2); margin-right: 1.5rem; }
+</style>
+</head>
+<body>
+<main>
+  <nav class="nav">
+    <a href="/">← system-o</a>
+    <a href="/security/acknowledgments.html">Acknowledgments</a>
+  </nav>
+
+  <h1>Vulnerability Disclosure Policy</h1>
+  <p class="effective">Effective date: April 30, 2026</p>
+
+  <p>This policy covers <strong>system-o.org</strong> and its subdomains. The operator welcomes reports from security researchers and treats all good-faith reports seriously.</p>
+
+  <h2>Scope</h2>
+  <p>In scope: <code>system-o.org</code> and any subdomain operated by this site, except where explicitly excluded.</p>
+
+  <h2>Out of scope</h2>
+  <ul>
+    <li>Denial-of-service attacks of any kind, including resource-exhaustion testing</li>
+    <li>Social engineering of operators, contractors, or third parties</li>
+    <li>Physical attacks against infrastructure</li>
+    <li>Reports from automated scanners without manual validation and reproducible impact</li>
+    <li>Third-party services we depend on but do not control (Cloudflare, GitHub, Porkbun, Proton). Report those upstream.</li>
+    <li>Vulnerabilities in unmodified upstream dependencies — report upstream and notify us if relevant</li>
+    <li>Issues requiring a privileged position on the local network or the victim's device</li>
+    <li>Missing security headers without demonstrated impact</li>
+    <li>Reports based solely on tool output without exploitation evidence</li>
+  </ul>
+
+  <h2>How to report</h2>
+  <p>Email: <a href="mailto:security@system-o.org">security@system-o.org</a></p>
+  <p>For sensitive details, encrypt your report using our PGP key:<br>
+    <a href="https://presspause.dev/.well-known/openpgpkey/security.asc">https://presspause.dev/.well-known/openpgpkey/security.asc</a></p>
+  <p>Please include:</p>
+  <ul>
+    <li>A clear description of the vulnerability and its impact</li>
+    <li>Steps to reproduce, including any required preconditions</li>
+    <li>The affected URL, endpoint, or component</li>
+    <li>Your name or handle if you would like acknowledgment</li>
+  </ul>
+
+  <h2>What to expect</h2>
+  <p>This site is operated by a small team. Response times are best-effort, not contractual:</p>
+  <ul>
+    <li>Acknowledgment of receipt: within 5 business days</li>
+    <li>Initial triage: within 14 business days</li>
+    <li>Resolution: depends on severity and complexity</li>
+  </ul>
+  <p>We do not currently offer monetary bug bounties. We do offer public acknowledgment with your consent.</p>
+
+  <h2>Coordinated disclosure</h2>
+  <p>We follow a coordinated disclosure model. Please give us 90 days from initial report before public disclosure as a default. We are happy to negotiate this window in either direction based on severity, complexity, and exploitation evidence.</p>
+  <p>If we have not responded to a confirmed report within 30 days, you may escalate by re-sending with "ESCALATION" in the subject line.</p>
+
+  <h2>Safe harbor</h2>
+  <p>We will not pursue legal action against researchers who:</p>
+  <ul>
+    <li>Make a good-faith effort to comply with this policy</li>
+    <li>Avoid privacy violations, destruction of data, and degradation of service</li>
+    <li>Do not exploit vulnerabilities beyond what is necessary to demonstrate impact</li>
+    <li>Do not publicly disclose vulnerabilities before we have had a reasonable opportunity to address them</li>
+    <li>Report findings only to us through the channels described above</li>
+  </ul>
+  <p>This safe harbor applies only to actions covered by this policy and does not authorize activity inconsistent with applicable law.</p>
+
+  <h2>Updates</h2>
+  <p>Last updated April 30, 2026. Material changes will be published here, and the <code>Expires</code> field on our security.txt will be refreshed annually.</p>
+</main>
+</body>
+</html>
