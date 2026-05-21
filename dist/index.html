@@ -112,6 +112,113 @@ const BOOT_LINES = [
   { text: '', delay: 1500 },
 ];
 
+// ─── O-BOY (interactive ASCII friend) ─────────────────────────────
+const O_BOY_POSES = [
+  ['   ___   ',
+   '  |o o|  ',
+   '  | _ |  ',
+   '  |___|  ',
+   '   | |   ',
+   '  /| |\\  ',
+   '   |_|   '],
+  ['   ___   ',
+   '  |- -|  ',
+   '  | _ |  ',
+   '  |___|  ',
+   '   | |   ',
+   '  /| |\\  ',
+   '   |_|   '],
+  ['   ___   ',
+   '  |^ ^|  ',
+   '  |\\_/|  ',
+   '  |___|  ',
+   '   | |   ',
+   '  /| |\\  ',
+   '   |_|   '],
+  ['   ___   ',
+   '  |O O|  ',
+   '  | o |  ',
+   '  |___|  ',
+   '   | |   ',
+   '  /| |\\  ',
+   '   |_|   '],
+  ['   ___   ',
+   '  |- o|  ',
+   '  | _ |  ',
+   '  |___|  ',
+   '   | |   ',
+   '  /| |\\  ',
+   '   |_|   '],
+  ['   ___   ',
+   '  |z z|  ',
+   '  | _ |  ',
+   '  |___|  ',
+   '   | |   ',
+   '  /| |\\  ',
+   '   |_|   '],
+];
+
+const O_BOY_SAYINGS = [
+  'oh hi',
+  'spec is law',
+  'gates are local',
+  'no LLM in gates',
+  'mind the cascade',
+  "frontmatter or it didn't happen",
+  '*beep*',
+  'tombstones forever',
+  '...',
+  'ready',
+  'friction-free in',
+  'structured out',
+];
+
+function OBoy() {
+  const [pose, setPose] = useState(0);
+  const [say, setSay] = useState(null);
+  const sayTimerRef = useRef(null);
+
+  const click = (e) => {
+    e.stopPropagation();
+    setPose(p => (p + 1) % O_BOY_POSES.length);
+    const msg = O_BOY_SAYINGS[Math.floor(Math.random() * O_BOY_SAYINGS.length)];
+    setSay(msg);
+    if (sayTimerRef.current) clearTimeout(sayTimerRef.current);
+    sayTimerRef.current = setTimeout(() => setSay(null), 2200);
+  };
+
+  useEffect(() => () => {
+    if (sayTimerRef.current) clearTimeout(sayTimerRef.current);
+  }, []);
+
+  return (
+    <div onClick={click} style={{
+      cursor: 'pointer',
+      userSelect: 'none',
+      display: 'inline-block',
+      padding: '4px 8px',
+    }}>
+      <div style={{ height: '1.65em', color: 'var(--accent)', whiteSpace: 'pre' }}>
+        {say ? `‹ ${say} ›` : ' '}
+      </div>
+      {O_BOY_POSES[pose].map((line, i) => (
+        <div key={i} style={{
+          color: 'var(--text)',
+          lineHeight: 1.1,
+          whiteSpace: 'pre',
+        }}>{line}</div>
+      ))}
+      <div style={{
+        color: 'var(--text-3)',
+        marginTop: '6px',
+        whiteSpace: 'pre',
+      }}>
+        {'‹ click me ›'}
+      </div>
+    </div>
+  );
+}
+
 // ─── COMMAND REGISTRY ─────────────────────────────────────────────
 const COMMANDS = {
   help: () => [
@@ -121,8 +228,7 @@ const COMMANDS = {
     <Line><Teal>about</Teal>       <Dim2> ·  what is system-o</Dim2></Line>,
     <Line><Teal>spec</Teal>        <Dim2> ·  v1.0 spec overview (10 sections)</Dim2></Line>,
     <Line><Teal>iso</Teal>         <Dim2> ·  ISO 13485 quality alignment</Dim2></Line>,
-    <Line><Teal>install</Teal>     <Dim2> ·  setup instructions</Dim2></Line>,
-    <Line><Teal>status</Teal>      <Dim2> ·  pipeline status</Dim2></Line>,
+    <Line><Teal>install</Teal>     <Dim2> ·  capability requirements</Dim2></Line>,
     <Line><Teal>github</Teal>      <Dim2> ·  open repository</Dim2></Line>,
     <Line><Teal>o-boy</Teal>       <Dim2> ·  ?</Dim2></Line>,
     <Line><Teal>clear</Teal>       <Dim2> ·  clear terminal</Dim2></Line>,
@@ -133,20 +239,18 @@ const COMMANDS = {
   about: () => [
     <Line><Teal>system-o</Teal> <Dim2>— Markdown OS for AI-augmented operators</Dim2></Line>,
     <Gap />,
-    <Line>A portable vault spec + offline-first automation chain that turns a plain</Line>,
+    <Line>A portable vault spec + transform manifest that turns a plain</Line>,
     <Line>Markdown folder into a structured operating environment for humans and agents.</Line>,
     <Gap />,
     <Line><Dim2>Three layers:</Dim2></Line>,
     <Line>  <Blue>Spec</Blue>      <Dim2>folder taxonomy · frontmatter tiers · lifecycle state machines</Dim2></Line>,
     <Line>           <Dim2>agent cascade rules · canonical vocabulary</Dim2></Line>,
-    <Line>  <Amber>Reference</Amber> <Dim2>PowerShell automation · Obsidian plugin manifest</Dim2></Line>,
-    <Line>           <Dim2>Task Scheduler · Canvas dashboards  (Windows + Obsidian + Claude)</Dim2></Line>,
+    <Line>  <Amber>Reference</Amber> <Dim2>one concrete implementation that satisfies the spec —</Dim2></Line>,
+    <Line>           <Dim2>your choice of editor, scheduler, and agent host</Dim2></Line>,
     <Line>  <Dim>Distrib.</Dim>  <Dim2>scaffolder / installer — post-v1.0</Dim2></Line>,
     <Gap />,
     <Line><Dim2>Operating principle:</Dim2>  <T c="var(--text)">friction-free in, structured out.</T></Line>,
     <Line><Dim2>                     Gates are local-deterministic. LLM is participant, not policy-maker.</Dim2></Line>,
-    <Gap />,
-    <Line><Dim2>Phase:</Dim2>  pre-mvp  <Dim2>·  Risk:</Dim2>  3  <Dim2>·  Priority:</Dim2>  1  <Dim2>·  Domain:</Dim2>  system-o.org</Line>,
   ],
 
   spec: () => [
@@ -202,60 +306,25 @@ const COMMANDS = {
   ],
 
   install: () => [
-    <Line><Teal>Installation — reference implementation (Windows + Obsidian + Claude Code)</Teal></Line>,
+    <Line><Teal>Installation — capability requirements</Teal></Line>,
     <HR />,
-    <Line><Dim2>Prerequisites</Dim2></Line>,
-    <Line>  Windows 11  ·  PowerShell 7+  ·  Obsidian  ·  Claude Code  ·  Git</Line>,
+    <Line><Dim2>system-o adopters compose a stack that satisfies four capabilities.</Dim2></Line>,
+    <Line><Dim2>The spec is the artifact; the reference is one example.</Dim2></Line>,
     <Gap />,
-    <Line><Dim2>Step 1  Clone the repository</Dim2></Line>,
-    <Line>  <Dim2>$</Dim2>  <T c="var(--text)">git clone https://github.com/presspausegarage/system-o</T></Line>,
+    <Line><Dim2>Capability</Dim2>                  <Dim2>Role</Dim2></Line>,
+    <Line>  <Blue>Editor</Blue>                    <Dim2>view + edit markdown files in a folder vault</Dim2></Line>,
+    <Line>  <Blue>Task runner</Blue>               <Dim2>fire deterministic transforms on a schedule</Dim2></Line>,
+    <Line>  <Blue>Frontmatter validator</Blue>     <Dim2>enforce schema on real notes</Dim2></Line>,
+    <Line>  <Blue>Agent cascade host</Blue>        <Dim2>orient AI tools to a workspace via cascade files</Dim2></Line>,
     <Gap />,
-    <Line><Dim2>Step 2  Bootstrap the vault scaffold</Dim2></Line>,
-    <Line>  <Dim2>$</Dim2>  <T c="var(--text)">cd system-o</T></Line>,
-    <Line>  <Dim2>$</Dim2>  <T c="var(--text)">.\reference\scripts\bootstrap-vault.ps1 -Target C:\dev</T></Line>,
-    <Gap />,
-    <Line><Dim2>Step 3  Open vault in Obsidian</Dim2></Line>,
-    <Line>  Open Obsidian → Open folder as vault → select <T c="var(--text)">C:\dev</T></Line>,
-    <Gap />,
-    <Line><Dim2>Step 4  Install plugin manifest</Dim2></Line>,
-    <Line>  <Dim2>$</Dim2>  <T c="var(--text)">.\reference\scripts\install-icon-pack.ps1</T></Line>,
-    <Gap />,
-    <Line><Dim2>Step 5  Schedule automation chain</Dim2></Line>,
-    <Line>  <Dim2>$</Dim2>  <T c="var(--text)">.\reference\scripts\register-tasks.ps1</T></Line>,
+    <Line><Dim2>Reference implementation</Dim2></Line>,
+    <Line>  A fully wired example lives in the repo's <T c="var(--text)">/reference</T> tree.</Line>,
+    <Line>  Substitute any equivalent component without breaking conformance.</Line>,
     <Gap />,
     <Line><Amber>Note</Amber>  <Dim2>Repository is private; awaiting public release scrub. Check back or watch GitHub for v1.0.</Dim2></Line>,
     <Gap />,
-    <Line><Dim2>Conformance test:</Dim2>  spin clean VM · install stack · drop bundle · run for one day · verify conventions hold</Line>,
+    <Line><Dim2>Conformance test:</Dim2>  spin a clean environment · install your stack · drop the bundle · run for one day · verify conventions hold</Line>,
   ],
-
-  status: () => {
-    const now = new Date();
-    const pad = n => String(n).padStart(2,'0');
-    const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())} ET`;
-    return [
-      <Line><Teal>Pipeline status</Teal>  <Dim2>as of {ts}</Dim2></Line>,
-      <HR />,
-      <Line><Dim2>Project</Dim2>         <T c="var(--text)">system-o</T></Line>,
-      <Line><Dim2>Phase</Dim2>           <Amber>pre-mvp</Amber></Line>,
-      <Line><Dim2>Risk</Dim2>            <T c="var(--text)">3</T>  <Dim2>(beloved / load-bearing)</Dim2></Line>,
-      <Line><Dim2>Priority</Dim2>        <T c="var(--text)">1</T>  <Dim2>(ongoing / long-arc)</Dim2></Line>,
-      <Gap />,
-      <Line><Dim2>Spec sections</Dim2></Line>,
-      <Line>  <T c="var(--accent)">✓</T>  §Agent orientation files        <Dim2>drafted · ready to commit</Dim2></Line>,
-      <Line>  <T c="var(--accent)">✓</T>  §Transform manifest             <Dim2>drafted · ready to commit</Dim2></Line>,
-      <Line>  <T c="var(--accent)">✓</T>  §Operating principles           <Dim2>locked</Dim2></Line>,
-      <Line>  <T c="var(--accent)">✓</T>  §Lifecycle state machines       <Dim2>locked</Dim2></Line>,
-      <Line>  <T c="var(--accent)">✓</T>  §Registry schema                <Dim2>locked</Dim2></Line>,
-      <Line>  <T c="var(--accent)">✓</T>  §Risk + priority schemas        <Dim2>locked</Dim2></Line>,
-      <Line>  <Amber>⧖</Amber>  §Agent-context bundle structure <Dim2>gap · post-v1.0</Dim2></Line>,
-      <Line>  <Amber>⧖</Amber>  §Template manifest              <Dim2>gap · post-v1.0</Dim2></Line>,
-      <Gap />,
-      <Line><Dim2>Next action</Dim2>     implement <T c="var(--text)">transform-orientation.ps1</T></Line>,
-      <Line><Dim2>V1.0 gate</Dim2>       clean VM conformance test</Line>,
-      <Line><Dim2>Domain</Dim2>          system-o.org  <Dim2>(registered · not yet pointed)</Dim2></Line>,
-      <Line><Dim2>Repo</Dim2>            github.com/presspausegarage/system-o  <Dim2>(private · pending scrub)</Dim2></Line>,
-    ];
-  },
 
   github: () => {
     setTimeout(() => {
@@ -273,42 +342,7 @@ const COMMANDS = {
     ];
   },
 
-  'o-boy': () => [
-    <Line><T c="var(--accent)">
-      {`  ██████╗       ██████╗  ██████╗ ██╗   ██╗`}
-    </T></Line>,
-    <Line><T c="var(--accent)">
-      {`  ██╔═══██╗     ██╔══██╗██╔═══██╗╚██╗ ██╔╝`}
-    </T></Line>,
-    <Line><T c="var(--accent)">
-      {`  ██║   ██║     ██████╔╝██║   ██║ ╚████╔╝ `}
-    </T></Line>,
-    <Line><T c="var(--accent)">
-      {`  ██║   ██║     ██╔══██╗██║   ██║  ╚██╔╝  `}
-    </T></Line>,
-    <Line><T c="var(--accent)">
-      {`  ╚██████╔╝     ██████╔╝╚██████╔╝   ██║   `}
-    </T></Line>,
-    <Line><T c="var(--accent)">
-      {`   ╚═════╝      ╚═════╝  ╚═════╝    ╚═╝   `}
-    </T></Line>,
-    <Gap />,
-    <Line><Teal>Initiating unscheduled quality audit...</Teal></Line>,
-    <Gap />,
-    <Line>  <T c="var(--accent)">PASS</T>  <Dim2>[QA-01]</Dim2>  Frontmatter on all real notes</Line>,
-    <Line>  <T c="var(--accent)">PASS</T>  <Dim2>[QA-02]</Dim2>  No orphaned launchpad items (&gt;30d idle)</Line>,
-    <Line>  <T c="var(--accent)">PASS</T>  <Dim2>[QA-03]</Dim2>  All handoffs carry verification blocks</Line>,
-    <Line>  <T c="var(--accent)">PASS</T>  <Dim2>[QA-04]</Dim2>  Sewerpipe purge scheduled</Line>,
-    <Line>  <T c="var(--accent)">PASS</T>  <Dim2>[QA-05]</Dim2>  Agent cascade file present at workspace root</Line>,
-    <Line>  <T c="var(--accent)">PASS</T>  <Dim2>[QA-06]</Dim2>  Risk-3 projects gated behind PR-only commits</Line>,
-    <Line>  <Amber>WARN</Amber>  <Dim2>[QA-07]</Dim2>  Standing handoffs detected — 3 unresolved items</Line>,
-    <Line>  <Amber>WARN</Amber>  <Dim2>[QA-08]</Dim2>  `priority:` field absent on 9 registry entries</Line>,
-    <Line>  <Dim>SKIP</Dim>  <Dim2>[QA-09]</Dim2>  CAPA process — post-v1.0</Line>,
-    <Line>  <Dim>SKIP</Dim>  <Dim2>[QA-10]</Dim2>  Source controls (data, feeds, APIs) — post-v1.0</Line>,
-    <Gap />,
-    <Line><Dim2>Result</Dim2>  6 / 8 active checks passed  <Dim2>·  2 warnings  ·  0 blockers</Dim2></Line>,
-    <Line><Dim2>Audit log written to</Dim2>  <T c="var(--text)">_meta/logs/qa-{new Date().toISOString().slice(0,10)}.log</T></Line>,
-  ],
+  'o-boy': () => [<OBoy />],
 
   clear: () => '__CLEAR__',
 };
