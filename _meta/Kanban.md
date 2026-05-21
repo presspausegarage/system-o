@@ -15,7 +15,7 @@ tags:
 - [ ] v1.0 conformance test: clean Windows VM install + 1-day run
 - [ ] `_journal/` mechanic correction in `_meta/conventions.md` (manual writes at top, carry forward)
 - [ ] Update `apps/system-o/README.md` to reflect three-layer model (replace "two things sharing a name" framing)
-- [ ] Decide where `reference/` lives (likely `apps/system-o/reference/`)
+- [ ] Decide where `reference/` lives — resolved: `apps/system-o/reference/` (committed 2026-05-20)
 - [ ] **Open design question — Kanban→handoff auto-verification.** Should marking a Kanban task `[x]` auto-flip a related handoff to `status: complete` (vs. today's manual `verification:` citation)? Requires stable task IDs, bidirectional linking (handoffs → tasks, tasks → handoffs), and a reconciler. Solo-operator value is real; complexity is non-trivial. Currently solved at the doc layer: `task:` is a recognized `verification:` type and the lint cross-checks the cited Kanban entry is actually `[x]` (see `_meta/scripts/lint-handoff-frontmatter.ps1`). Decide whether v1.0 spec should formalize the bidirectional case or leave the manual citation as-is. Surfaced from 2026-04-28 session.
 - [ ] **Reference primitive — frontmatter `updated:` auto-sync.** Workspace ships `_meta/scripts/bump-updated-field.ps1` that aligns each note's `updated:` field with file mtime. Idempotent pure transform, scoped to author-edited dirs (excludes `_journal/`, `_archive/`, etc.), preserves quoting style and mtime so it doesn't retrigger itself. Fits system-o's "schema applied by automation, not human" principle. Candidate for `reference/scripts/` once that path is decided. Currently wired into the nightly chain via `sweep-handoffs.ps1` tail (sweep → bump → lint). Surfaced from 2026-04-28 session.
 - [ ] Public release scrub of `presspausegarage/system-o` repo (now urgent — `github` command on live site links to a private repo)
@@ -24,9 +24,6 @@ tags:
 - [ ] Draft §ISO alignment section in SPEC.md using "sources" (data, feeds, APIs) framing — locked terminology, not "suppliers"
 
 ## Active
-
-- [ ] Implement `reference/scripts/transform-orientation.ps1` against manifest schema (next-session pickup, see [[2026-04-27-system-o-spec-agent-orientation|04-27 handoff]])
-- [ ] Commit drafted spec text to `apps/system-o/spec/SPEC.md` (sections: Agent orientation files, Transform manifest)
 
 ## Blocked
 
@@ -44,6 +41,8 @@ tags:
 - [x] Resolved gap: spec versioning (v1.0 = VM portability test) — 2026-04-27
 - [x] Resolved gap: conformance levels (full conformance + extensions) — 2026-04-27
 - [x] Resolved gap: AGENTS.md spec (filename + location + transform model) — 2026-04-27
+- [x] Commit §Agent orientation files + §Transform manifest to `spec/SPEC.md` — 2026-05-20
+- [x] Implement `reference/scripts/transform-orientation.ps1` (deterministic transform, tested) — 2026-05-20
 
 **Complete**
 
