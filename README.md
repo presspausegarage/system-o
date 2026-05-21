@@ -19,7 +19,7 @@ Strip the operator's specific content (projects, drafts, journal entries, busine
 
 **system-o is two things sharing a name** (see open question about whether to split):
 
-1. **Architectural umbrella** — spans the generic automation chain (`_meta/scripts/`), the lifecycle conventions, the agent-portability stance, and the in-flight tooling launchpad item [[launchpad/opendev/README|OpenDev]]. Everything generic-to-the-OS layer, nothing operator-specific. *Explicitly out of scope:* Andy's own web operation (`web/webmaster/`, the 5 sites) and vertical workflows like email-driven editorial ([[launchpad/mobile-copy-edits/README|mobile-copy-edits]]) — those are siblings that **use** the OS, not part of it.
+1. **Architectural umbrella** — spans the generic automation chain (`_meta/scripts/`), the lifecycle conventions, the agent-portability stance, and the in-flight tooling launchpad item [[launchpad/opendev/README|OpenDev]]. Everything generic-to-the-OS layer, nothing operator-specific. *Explicitly out of scope:* Andy's own web operation (`web/webmaster/`, the 5 sites) and vertical workflows like editorial QC (formerly `apps/mobile-copy-edits/`, archived 2026-05-02) — those are siblings that **use** the OS, not part of it.
 2. **Concrete project / distributable** — this project at `apps/system-o/`. The packaged bundle that makes the OS installable for someone other than Andy.
 
 The project is about (2), but (2) only makes sense as a realization of (1). `apps/system-o/` is where the packaging engineering happens; the architectural umbrella keeps living in the meta-docs.
@@ -52,7 +52,7 @@ In <2 hours: inventory **what would actually go in the bundle vs. what's user-sp
 
 ## Notes
 
-Captured April 26, 2026, in the same session that produced [[launchpad/mobile-copy-edits/README|mobile-copy-edits]]. The architectural concept itself emerged earlier the same day across two handoffs:
+Captured April 26, 2026, in the same session that produced [[apps-mobile-copy-edits|mobile-copy-edits]]. The architectural concept itself emerged earlier the same day across two handoffs:
 
 - [[2026-04-26d-handoff-lifecycle-portability-and-launchpad-spinoffs]] — first time the "five standout patterns" + "no widely-accepted term" finding landed
 - [[2026-04-26e-agent-portability-test-and-graduate-fixes]] — fresh-agent portability test passed; alternative name "operator's vault" surfaced (not adopted by user); three more patterns added (#6 capture-then-route, #7 vault-as-quadral-role, #8 gates-are-local-deterministic)
@@ -67,7 +67,7 @@ Folded in (no longer separate launchpad items):
 
 **Explicitly siblings, not children** (use the OS, but aren't part of it):
 - `web/webmaster/` — Andy's cross-site web operation; the brain of his web work
-- [[launchpad/mobile-copy-edits/README|mobile-copy-edits]] — email-driven editorial workflow, a vertical use case
+- ~~mobile-copy-edits~~ — post-edit gates for editorial QC (Phase 3 of cfladu Content QC); a vertical use case. **Archived 2026-05-02** (cascading from Syncthing decomm).
 
 Strategic cross-references:
 
