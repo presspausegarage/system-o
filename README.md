@@ -15,14 +15,15 @@ A **"markdown OS"** — the generic, installable layer of vault scaffolding, aut
 
 Strip the operator's specific content (projects, drafts, journal entries, business-specific tooling like webmaster, vertical workflows like email-driven editorial), leave the OS, package it for fresh install.
 
-## Scope: umbrella vs. package
+## Scope: three layers
 
-**system-o is two things sharing a name** (see open question about whether to split):
+**system-o is one thing in three layers** (reframed July 2, 2026, from the earlier "two things sharing a name"; the loop-cell architecture review made the split legible):
 
-1. **Architectural umbrella** — spans the generic automation chain (`_meta/scripts/`), the lifecycle conventions, the agent-portability stance, and the in-flight tooling launchpad item [[launchpad/opendev/README|OpenDev]]. Everything generic-to-the-OS layer, nothing operator-specific. *Explicitly out of scope:* Andy's own web operation (`web/webmaster/`, the 5 sites) and vertical workflows like editorial QC (formerly `apps/mobile-copy-edits/`, archived 2026-05-02) — those are siblings that **use** the OS, not part of it.
-2. **Concrete project / distributable** — this project at `apps/system-o/`. The packaged bundle that makes the OS installable for someone other than Andy.
+1. **Spec** — `spec/SPEC.md`. The portable contracts: layered architecture, loop cell, orientation files, transform + loop manifests, determinism guarantees. What an adopter conforms *to*, independent of any implementation.
+2. **Reference implementation** — the live workspace at `C:\dev`. The automation chain, loop layer, lifecycle conventions, and guards running in production; every spec section is written from a working instance, not prospectively. *Explicitly out of scope:* Andy's own web operation (`web/webmaster/`, the sites) and vertical workflows — siblings that **use** the OS, not part of it.
+3. **Distribution** — the installable bundle (future; this project at `apps/system-o/` is where that packaging engineering happens). Fresh-install scaffolding plus an onboarding process — including populating the vault's own `_meta/GLOSSARY.md` — that instantiates the spec for someone other than Andy.
 
-The project is about (2), but (2) only makes sense as a realization of (1). `apps/system-o/` is where the packaging engineering happens; the architectural umbrella keeps living in the meta-docs.
+The layers feed forward: the reference implementation hardens the spec; the spec is what the distribution installs. [[launchpad/opendev/README|OpenDev]] remains an umbrella child on the reference-implementation side.
 
 ## What problem does it solve?
 
@@ -42,7 +43,7 @@ In <2 hours: inventory **what would actually go in the bundle vs. what's user-sp
 
 ## Open questions
 
-- **Architecture vs. project — same name?** system-o is currently both: the architectural concept (umbrella spanning OpenDev, the offline-first automation chain, and the lifecycle conventions) AND the concrete distributable. Worth keeping the same name, or split — e.g. system-o the architecture vs. a different name for the package?
+- ~~**Architecture vs. project — same name?**~~ Resolved July 2, 2026 by the three-layer reframe (§Scope): one name, three layers — spec / reference implementation / distribution. No split needed; the layers, not separate names, carry the distinction.
 - **Distribution form** — git template repo? `npx create-systemo`-style scaffold? Downloadable installer that drops `.obsidian/` config + `_meta/` skeleton + conventions? Something else?
 - **Plugin licensing** — third-party Obsidian plugins (Dataview, Templater, Kanban) can't generally be redistributed; ship a manifest that the installer pulls at install time, or document the plugin set as a prerequisite dependency?
 - **`CLAUDE.md` / `AGENTS.md` story** — package can't ship Andy's specific `CLAUDE.md`, but probably ships a template version adopters customize. How does the agent-portability story (per [[agent-portability]]) land in the package?
