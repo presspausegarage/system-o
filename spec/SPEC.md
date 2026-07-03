@@ -74,6 +74,47 @@ A conforming vault ships a glossary (`_meta/GLOSSARY.md`): one compact table of 
 
 ---
 
+## § File & folder taxonomy
+
+### Purpose
+
+What a fresh vault needs before anything else conforms: the minimum folder set the reference scripts already depend on, and the line between what's locked (fixed by spec) and what an adopter names themselves. This is the compact, implementation-derived core — written from what the shipped reference actually requires, not an exhaustive taxonomy essay.
+
+### Locked
+
+Every conforming vault has these, at these paths, holding this role. Adopters do not rename them.
+
+| Path | Role |
+|---|---|
+| `_meta/registry/` | One card per project (spec §Loop manifest's `run-loop.ps1`, `build-static-home.ps1` read this as canonical) |
+| `_meta/handoffs/` | Session-close records; `_archive/handoffs/` is their long-term home once swept |
+| `_meta/session-log.md` | Chronological index; newest-at-top |
+| `_meta/HOME.md` | The workspace dashboard; carries an `updated:` stamp checked against the session log |
+| `_meta/loops/` | Loop manifests; `_meta/loops/proposals/` and `_meta/loops/<name>.ledger.jsonl` are runner-owned artifacts beneath it |
+| `_meta/extensions/` | One directory per extension (spec §Extension surface) |
+| `_meta/scripts/` | Automation-chain scripts (layer 2) |
+| `_meta/templates/` | Script-consumed templates (loop prompts, orientation-file scaffolds) |
+| `_meta/logs/` | Run logs for the automation chain and loop runners |
+| `_inbox/` | Capture pad; triage or an adopter's own routing empties it |
+| `_sewerpipe/` | Retention window before hard delete; the applier moves rejected loop proposals here if present |
+| `CLAUDE.md` or `AGENTS.md` (workspace root) | The canonical orientation file (spec §Agent orientation files) |
+
+### Adopter-named
+
+Category roots (what an adopter calls their projects: `web/`, `apps/`, `games/`, or any other top-level split) are **not** prescribed. The reference scripts discover them dynamically — `detect-wrap-tail.ps1`'s commit scan walks any top-level directory containing a `.git` folder; `build-static-home.ps1` groups by whatever `category:` values are actually present in the registry. An adopter may add, rename, or restructure these roots freely; only the locked set above is fixed.
+
+### Determinism guarantees
+
+- A conforming vault has every locked path present (empty is fine; absent is not)
+- No reference script hardcodes a category-root name
+
+### Out of scope (post-v1.0)
+
+- Folder semantics (who writes, who reads, never-touch invariants per path) — a fuller treatment than this compact core
+- Frontmatter rules, lifecycle state machines, inbox routing rules, registry schema, risk/priority schemas, canonical vocabulary as dedicated sections — currently covered piecemeal by other sections and `_meta/GLOSSARY.md`; consolidating them is separate future work
+
+---
+
 ## § Agent orientation files
 
 ### Purpose

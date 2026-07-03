@@ -21,7 +21,7 @@
 param(
   [string]$Root = '.',
   [string[]]$ScanDirs = @('_meta'),
-  [string]$ExcludeMatch = '[\\/](logs|scripts|handoffs|extensions)([\\/]|$)',
+  [string]$ExcludeMatch = '[\\/](logs|scripts|handoffs|extensions|templates)([\\/]|$)',
   [switch]$DryRun
 )
 
