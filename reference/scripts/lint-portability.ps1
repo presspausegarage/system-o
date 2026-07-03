@@ -10,7 +10,10 @@
 
   Deliberately heuristic and line-based: it flags the 90% mechanical pattern,
   it does not parse PowerShell. Regex-heavy lines outside path contexts are not
-  flagged (path rules only fire on lines that call filesystem commands).
+  flagged (path rules only fire on lines that call filesystem commands), and
+  common regex-metacharacter escapes (\d \s \w \b and their negations) are
+  excluded from the backslash-path rule so date/pattern regexes on the same
+  line as a path call don't false-positive.
   Drive-letter findings are tagged review-only because overridable param
   defaults are exempt by audit convention.
 .PARAMETER Path
@@ -42,7 +45,7 @@ $pathCmds = 'Join-Path|Test-Path|Resolve-Path|Get-ChildItem|Get-Content|Set-Cont
 
 $rules = @(
   @{ Id = 'backslash-path';  Severity = 'hard';
-     Test = { param($l) ($l -match $pathCmds) -and ($l -match "['`"][^'`"]*\\[A-Za-z_]") } ;
+     Test = { param($l) ($l -match $pathCmds) -and ($l -match "['`"][^'`"]*\\[A-Za-z_]") -and ($l -notmatch '\\[dswbSWB](\{|\b)') } ;
      Msg  = "literal '\' separator in a path context — use '/' or chained Join-Path" }
   @{ Id = 'windows-env-var'; Severity = 'hard';
      Test = { param($l) $l -match '\$env:(TEMP|TMP|APPDATA|LOCALAPPDATA|ProgramData|USERPROFILE|windir|SystemRoot)\b' } ;

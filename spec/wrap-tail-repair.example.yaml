@@ -1,0 +1,57 @@
+# Loop manifest — wrap-tail-repair (canonical example, spec §Loop manifest)
+# Schema: loop cell = detect (script) -> propose (LLM) -> verify (script) -> apply (gated).
+# Consumed by reference/scripts/run-loop.ps1. Policy lives HERE, not in prompts or code.
+#
+# This is the reference implementation's example loop: it maintains the invariant
+# that every handoff is indexed by a session-log entry. Adopt it as-is or use it
+# as the template for a second loop.
+
+loop: wrap-tail-repair
+invariant: every handoff in window is linked by a session-log entry, and HOME updated matches the newest entry
+
+# The LLM proposal may only ever target these paths. Enforced by the runner and applier.
+scope:
+  - _meta/session-log.md
+  - _meta/HOME.md
+
+detect:
+  script: detect-wrap-tail.ps1
+  args: -DryRun
+
+# verify: structural — deterministic checks in run-loop.ps1 (format, date, handoff wikilink,
+# single header, bullet tail). Full-circle verification = the detector self-clears.
+verify: structural
+
+# propose-only until earned: run for real, review proposals, then a human flips this
+# field per-endpoint once a trusted model's faithfulness is demonstrated (not just its
+# structural pass rate — see spec §Measured conformance). Scope here is risk<=2-equivalent
+# (session-log + HOME only); never enable auto-apply on a scope that touches irreversible
+# or high-consequence state.
+apply: propose-only
+auto_apply_endpoints: []
+promote_after: 5
+
+# Priority order. Degradation is REQUIRED design (spec §Endpoint degradation): the first
+# endpoint is the quality ceiling, the last is the availability floor. A loop never
+# hard-depends on frontier availability; if all endpoints fail it fail-closes with no
+# proposal. Swap in your own driver/model/url — this is illustrative, not load-bearing.
+endpoints:
+  - driver: claude-cli
+    model: <your-frontier-model>
+    timeout_sec: 180
+  - driver: ollama
+    url: http://localhost:11434
+    model: <your-local-model>
+    num_ctx: 8192
+    timeout_sec: 120
+  # a deterministic conformance/test endpoint — no LLM, no network:
+  # - driver: stub
+  #   model: canned
+  #   file: spec/wrap-tail-repair.stub-response.example.md
+
+budget:
+  max_prompt_chars: 24000
+  max_calls_per_run: 4
+
+# Prompt template (script-consumed, so it lives alongside the reference scripts)
+prompt: loop-wrap-tail-repair.prompt.md

@@ -24,7 +24,7 @@ tags:
 ## v1.0 / pre-public release blockers (architecture + distribution)
 
 - [ ] **Build: Dockerfile + first-start bootstrap** (D1/D8 — Docker is THE primary: vault scaffolds into bind mount, onboarding in-container incl. GLOSSARY + orientation-file prompts, cron inside; plugin manifest resolution per D7)
-- [ ] **Build: separator shims** across the framework-generic set — lint SHIPPED 2026-07-02 (`reference/scripts/lint-portability.ps1`, verified against audited scripts); its output is the shim worklist. Do the edits in a daylight pass with per-script smoke tests, not pre-nightly.
+- [ ] **Build: separator shims** on the LIVE vault copies — lint SHIPPED 2026-07-02 (`reference/scripts/lint-portability.ps1`); its output is the worklist. Daylight pass with per-script smoke tests, not pre-nightly. (The reference/ copies get shimmed at port time regardless — this card is only about keeping live and reference from drifting.)
 - [ ] **Build: static-HOME generator** (D4 Dataview fallback for editor-agnostic core)
 - [ ] **Roadmap (post-v1.0): Codespaces path** — deferred per D5 (Andy: insufficient basis to call it a target); revisit with real Codespaces experience
 - [x] **PowerShell scripts cross-runtime audit** — shipped as `_meta/cross-runtime-audit-2026-07-02.md`: 44 scripts, framework core 14/15 portable (1 separator lint + root resolver + TEMP shim ≈ 90% of findings), all structural locks in operator-only tooling, backup = the one engine seam — 2026-07-02
@@ -45,6 +45,7 @@ tags:
 
 ## Done
 
+- [x] **Loop layer ported into `reference/`** — `reference/scripts/{detect-wrap-tail,run-loop,apply-loop-proposal}.ps1`, `reference/templates/loop-wrap-tail-repair.prompt.md`, `spec/wrap-tail-repair.example.yaml`. Detector scrubbed to session-log/HOME only (drift/launchpad/frontmatter/PARA/demand-radar/notebooklm/nimpse checks stay operator-specific, not ported); generic `.git`-folder repo scan replaces the category-manifest dependency; ships `propose-only` + empty allowlist (adopter earns auto-apply, doesn't inherit Andy's). Lint-clean (one false-positive found + fixed in the lint itself: `\d`-style regex escapes no longer trip the backslash rule). Full-circle rehearsed via the stub driver in a staged vault: draft → verify → auto-apply → HOME cascade → guard self-clear — 2026-07-03
 - [x] **Portability lint shipped** — `reference/scripts/lint-portability.ps1` (path-context backslash, Windows env vars, scheduler/COM cmdlets, Windows exes, review-tagged drive letters); reproduces the audit findings on the framework set — 2026-07-02
 - [x] **Stub endpoint driver shipped** — `driver: stub` in the loop runner; verified full offline circle (canned entry → verify → auto-apply → cascade bump → guard clean) + fail-closed on garbage — 2026-07-02
 - [x] **Distribution review decided (D1–D8)** — Docker THE primary (chain-in-container, bind-mounted vault, cron inside; dissolves scheduler abstraction), OS-agnostic pwsh 7 reference, core+Obsidian-augmented, install-time plugin manifest, stub-driver loop conformance, bootstrap+optional-agent onboarding, Codespaces → roadmap — `_meta/distribution-review-2026-07-02.md` — 2026-07-02
