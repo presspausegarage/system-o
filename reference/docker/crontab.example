@@ -1,0 +1,12 @@
+# system-o nightly automation chain (spec layer 2). $VAULT_ROOT is substituted
+# by bootstrap.ps1 at install time with the actual vault path.
+#
+# Extensions run unconditionally: read-only, flag-only, no external dependency
+# (spec §Extension surface). Safe on a fresh install with zero configuration.
+50 2 * * * /usr/bin/pwsh -NoProfile -File $VAULT_ROOT/_meta/scripts/run-extensions.ps1 -Root $VAULT_ROOT >> $VAULT_ROOT/_meta/logs/extensions-cron.log 2>&1
+
+# The loop layer is commented out by default — it ships inert
+# (_meta/loops/wrap-tail-repair.yaml.example) until you configure a real
+# endpoint chain. Once you've renamed it to wrap-tail-repair.yaml and edited
+# in your own model/endpoint, uncomment the line below.
+# 0 3 * * * /usr/bin/pwsh -NoProfile -File $VAULT_ROOT/_meta/scripts/run-loop.ps1 -Manifest $VAULT_ROOT/_meta/loops/wrap-tail-repair.yaml -Root $VAULT_ROOT >> $VAULT_ROOT/_meta/logs/loop-cron.log 2>&1

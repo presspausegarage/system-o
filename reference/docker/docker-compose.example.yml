@@ -1,0 +1,16 @@
+# Copy to docker-compose.yml alongside the Dockerfile (or reference it with
+# `docker compose -f docker-compose.example.yml up` to try it as-is) and point
+# the bind mount at wherever you want your vault to live on the host.
+#
+# `init: true` matters — see entrypoint.ps1's signal-handling note.
+
+services:
+  system-o:
+    build: .
+    init: true
+    volumes:
+      - ./my-vault:/vault
+    environment:
+      VAULT_ROOT: /vault
+      AGENT_TARGET: CLAUDE.md   # or AGENTS.md — spec §Agent orientation files
+    restart: unless-stopped
