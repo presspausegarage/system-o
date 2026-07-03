@@ -1,8 +1,76 @@
 # system-o specification — v0.1 draft
 
-> **Status:** draft — sections committed as drafted; remaining 8 of 10 v1.0 sections in progress.
+> **Status:** draft — sections committed as drafted; remaining 6 of 10 v1.0 sections in progress.
 > **Form:** single file; hard ceiling 1500 lines, target 600–800. Split into modules above ceiling.
 > **Scope:** portable spec layer only — no reference-implementation detail, no distribution mechanics.
+
+---
+
+## § System architecture
+
+### Purpose
+
+The system is layered so an adopter can reason about what they may swap without breaking conformance. Each layer has a stability contract; everything above layer 2 is replaceable. The layered model is also the boundary map for the spec itself: the spec constrains layers 1–3 and the interfaces into 4–6; it does not specify editors, agents, or plugins.
+
+### Layers
+
+| # | Layer | Contract | Swappable |
+|---|---|---|---|
+| 1 | **Vault file format** — markdown + YAML frontmatter | The published language. Stability contract for every other layer. | No — this is the spec's foundation |
+| 2 | **Automation chain** — deterministic scripts + OS scheduler | Gates live here; each gate meets the determinism guarantees of the manifest it implements. The scheduler is host-native. | Per-OS reimplementation; behavior fixed by spec |
+| 3 | **Loop layer** — LLM-in-the-loop maintenance cells riding on layers 1–2 | Policy declared in loop manifests (§Loop manifest); the LLM is a pluggable endpoint, never the policy-maker. | Endpoints swap freely; cells conform or don't run |
+| 4 | **Editor surface** — Obsidian et al. | Optional augmentation. The vault must remain fully operable without it. | Yes, entirely |
+| 5 | **Agent harness** — Claude Code, opencode, local tooling | Oriented via §Agent orientation files. | Yes — this is the portability goal |
+| 6 | **Optional plugins** — Dataview, Templater, Kanban render | Render-only. No load-bearing state may live in a plugin. | Yes, entirely |
+
+### The loop cell
+
+The canonical pattern for any LLM-in-the-loop automation. Nothing at layer 3 may take another shape.
+
+```
+detect (script, deterministic) → propose (LLM, pluggable endpoint)
+  → verify (script, deterministic) → apply (gated)
+```
+
+Invariants:
+
+- The detector and verifier are conformant scripts meeting §Loop manifest's determinism guarantees; the propose call is the loop's only permitted LLM/network operation
+- The propose step is the **only** non-deterministic box, and it is endpoint-pluggable by construction
+- A loop with no verifier is not a loop; it is non-conformant
+- Loops repair in place with the smallest sufficient diff — never regenerate content from spec or template
+- Scope and budget are enforced script-side from the manifest, never prompt-side
+- A loop is defined by the invariant it maintains, not by its position in any schedule
+
+### Apply modes
+
+| Mode | Behavior |
+|---|---|
+| `propose-only` | Default. Verified proposals emit into the vault's review queue for human apply/reject. |
+| `auto` | Verified proposals from **trusted endpoints only** are applied inline by the runner; all others stay in the review queue. |
+
+Gating rules:
+
+- Every loop starts `propose-only`. `auto` is earned on recorded evidence, and a human flips the field
+- Trust is **per endpoint**: the manifest carries an allowlist, and a verified proposal auto-applies only when the endpoint that served it is on that list
+- Auto-apply is permitted only on scopes at risk tier ≤ 2; risk-3 scopes never auto-apply
+- Structural verification is not content fidelity. The verifier proves shape; faithfulness of unreviewed content is what the endpoint allowlist gates, and the review queue remains the fidelity check for every endpoint off the list
+
+### Measured conformance
+
+There are no capability tiers. A model's standing is its measured record against the loop's deterministic verifier — pass-rate per endpoint, kept in the loop's records (ledger and run log) — plus reviewed faithfulness evidence where auto-apply is at stake. Endpoint ranking, allowlisting, and demotion are evidence decisions, not spec forks.
+
+### Endpoint degradation
+
+Degradation is required design, not a fallback courtesy:
+
+- Every loop declares an endpoint priority chain: quality ceiling first, local availability floor last
+- The chain advances on transport failure **or** verification failure
+- No loop may hard-depend on frontier availability; the floor endpoint keeps every loop runnable
+- If all endpoints fail, the loop **fails closed**: no output, target files untouched, the failure recorded
+
+### Shared vocabulary
+
+A conforming vault ships a glossary (`_meta/GLOSSARY.md`): one compact table of the vault's ubiquitous language (~20 terms). The glossary is a conformance artifact, not fixed vocabulary — its terms are defined by the operator during onboarding. Loop prompt templates and orientation files reference glossary terms rather than re-defining them.
 
 ---
 
@@ -146,3 +214,85 @@ Conformance requirements for any transform script implementation:
 - Conditional operations (`if target == "aider"`)
 - Includes / inheritance between manifests
 - Regex in the `from` field (literal matching is sufficient)
+
+---
+
+## § Loop manifest
+
+### Purpose
+
+The loop manifest is a YAML file declaring one loop cell (§System architecture): the invariant it maintains, the paths it may touch, its detector and verifier, its apply policy, and its endpoint chain. It is consumed by the loop runner. Policy lives **here** — never in prompts, never in runner code. Per *gates are local-deterministic*, the manifest is purely declarative.
+
+### Location
+
+- Manifests: `_meta/loops/<loop-name>.yaml`, one per loop
+- Proposals: `_meta/loops/proposals/` — deliberately **not** any capture/triage-owned path, so ingestion automation never sweeps machine-generated proposals
+- Ledger: `_meta/loops/<loop-name>.ledger.jsonl`, append-only
+- Prompt templates: script-consumed artifacts; they live with the vault's other script-consumed templates, referenced by filename from the manifest
+
+### Schema
+
+```yaml
+loop: <name>                    # required
+invariant: <sentence>           # required — the condition this loop maintains
+scope:                          # required — the ONLY paths a proposal may target
+  - <vault-relative path>
+detect:                         # required — deterministic detector
+  script: <script name>
+  args: <arguments>
+verify: <verifier id>           # required — deterministic structural check
+apply: <mode>                   # required — propose-only | auto (§System architecture)
+auto_apply_endpoints:           # required when apply: auto — the endpoint trust allowlist
+  - <driver>/<model>
+  - deterministic               # non-LLM repairs the runner computes itself
+promote_after: <N>              # evidence threshold recorded for the apply-mode flip
+endpoints:                      # required — priority order: quality ceiling → local floor
+  - driver: <driver id>         # e.g. a CLI driver
+    model: <model>
+    timeout_sec: <N>
+  - driver: <driver id>         # e.g. an HTTP driver
+    url: <endpoint url>
+    model: <model>
+    num_ctx: <N>
+    timeout_sec: <N>
+budget:
+  max_prompt_chars: <N>         # oversize source material is truncated deterministically
+  max_calls_per_run: <N>        # remaining findings defer to the next run
+prompt: <template filename>     # required — the propose step's prompt template
+```
+
+| Field | Required | Meaning |
+|---|---|---|
+| `scope` | yes | Enforced by the runner and the applier, script-side. A proposal targeting any path outside `scope` is rejected regardless of verifier outcome. |
+| `apply` | yes | `propose-only` emits into the review queue; `auto` applies inline for allowlisted endpoints only. |
+| `auto_apply_endpoints` | when `auto` | Trust list keyed by serving endpoint. `deterministic` denotes repairs computed without an LLM. |
+| `promote_after` | no | The clean-pass threshold the apply-mode flip was (or will be) earned against; documentation of evidence, not automation — a human flips `apply`. |
+| `endpoints` | yes | Tried in order. The accepted proposal records which endpoint served it. |
+| `budget` | no | Caps enforced script-side before and during the propose step. |
+| `prompt` | yes | The propose step's template; the propose step cannot run without it. |
+
+### Runner semantics
+
+Conformance requirements for any loop-runner implementation:
+
+- The endpoint chain advances on transport failure **or** verification failure; per finding, each endpoint gets one attempt
+- All endpoints failing = fail-closed: no proposal, target files untouched, a failure record appended to the ledger
+- Idempotency: a finding whose proposal is already pending is skipped — no duplicate proposals, no duplicate LLM calls
+- Auto-apply failures leave the proposal pending in the review queue; they never retry destructively
+- A repair that deterministically creates a new finding inside the same loop's scope is **proposed** in the same run — and applied where the apply mode and allowlist permit — not deferred to the next
+- Every proposal event (emitted, applied, rejected) appends one ledger record; the ledger, together with the run log's per-endpoint attempt record, is the evidence base for apply-mode promotion and endpoint trust
+- Ledger records are JSON objects parsed by key; consumers must not depend on key order or line position
+
+### Determinism guarantees
+
+- Given identical vault state and manifest, the detector and verifier produce identical findings and verdicts
+- The propose call is the loop's only network/LLM operation
+- The verifier is pure: it writes nothing
+- The runner writes only inside `scope` (on apply) and to the loop's own artifacts (proposals, ledger, run log)
+
+### Out of scope (post-v1.0)
+
+- Cross-loop orchestration (ordering or dependencies between loops)
+- Per-finding endpoint routing (the chain is declared per loop)
+- Retry-within-endpoint policies (one attempt per endpoint per finding)
+- LLM-authored or LLM-modified manifests — policy stays human-authored
