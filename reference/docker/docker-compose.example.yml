@@ -2,11 +2,19 @@
 # `docker compose -f docker-compose.example.yml up` to try it as-is) and point
 # the bind mount at wherever you want your vault to live on the host.
 #
+# Build context is apps/system-o/ (two levels up from here), not this
+# directory -- the Dockerfile needs both reference/ and spec/ in its context
+# (see the Dockerfile's own comment on this). Run `docker compose` from here
+# and this relative path resolves correctly; if you copy this file elsewhere,
+# adjust `context:` to still point at apps/system-o/.
+#
 # `init: true` matters — see entrypoint.ps1's signal-handling note.
 
 services:
   system-o:
-    build: .
+    build:
+      context: ../..
+      dockerfile: reference/docker/Dockerfile
     init: true
     volumes:
       - ./my-vault:/vault
