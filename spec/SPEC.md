@@ -296,3 +296,60 @@ Conformance requirements for any loop-runner implementation:
 - Per-finding endpoint routing (the chain is declared per loop)
 - Retry-within-endpoint policies (one attempt per endpoint per finding)
 - LLM-authored or LLM-modified manifests — policy stays human-authored
+
+---
+
+## § Extension surface
+
+### Purpose
+
+Confirmed as the extension surface for adopters; formalized here (schema was open at spec-enumeration time). Full conformance has no minimum-viable tier — a vault either conforms or it doesn't — but conformance is not the same claim as "closed." An adopter's own domain checks (a trading system's heartbeat, an integration's auth-lapse detector, a project's doc-freshness gate) are exactly the kind of enhancement the reference implementation is built from, and stripping them out of a portable spec is not a verdict that they're clutter — it's the locked/extendable cleave doing its job. This section exists so that cleave is a documented contract, not a silent omission.
+
+### Locked vs. extendable
+
+| Surface | Status | Rule |
+|---|---|---|
+| Folder taxonomy, canonical vocabulary (§Shared vocabulary) | Locked | Fixed by spec |
+| Operating principles, state machines (handoff lifecycle, risk tiers, apply modes) | Locked | Fixed by spec |
+| Frontmatter | Extendable | Adopters may add fields; required fields cannot be removed |
+| Templates | Extendable | Adopters may add types |
+| Scripts | Extendable | Adopters may add automation |
+| Folders | Extendable | Adopters may add new folders under existing roots; canonical roots cannot be renamed |
+
+Extensions are how "extendable scripts" and "extendable folders" combine into one addressable surface, rather than ad hoc bolt-ons with no shared contract.
+
+### Location
+
+`_meta/extensions/<name>/`, one directory per extension:
+
+```
+_meta/extensions/<name>/
+  check.ps1     # required — the extension's detector
+  README.md     # required — one-line purpose + what it flags, for human-facing surfaces
+```
+
+### `check.ps1` contract
+
+An extension check is a **heartbeat**, not a gate and not a loop cell:
+
+- Accepts `-Root` and `-DryRun`; a conforming extension performs no writes when `-DryRun` is passed, and its default behavior needs no other flag to run safely
+- Read-only against everything outside its own extension directory — an extension never targets loop `scope:` paths or writes vault content; that is loop-cell territory (§Loop manifest), not heartbeat territory
+- Always exits `0` — an extension can flag a problem, it cannot fail the chain
+- Emits one machine-readable summary line: `EXTENSION-STATUS name=<name> flagged=<true|false>` (mirrors the `STATUS` line convention used elsewhere in the automation chain), plus any number of human-readable detail lines above it
+- No LLM invocation, no non-local network calls beyond what the extension's own domain legitimately requires (e.g. checking a self-hosted endpoint is reachable) — extensions inherit the automation chain's determinism stance, not the loop layer's pluggable-endpoint one
+
+### Discovery and aggregation
+
+A conforming reference implementation ships one runner that discovers every `_meta/extensions/*/check.ps1`, invokes each with `-Root -DryRun`, and aggregates their `EXTENSION-STATUS` lines into a single heartbeat summary — the same role the nightly automation chain plays for its own built-in checks. Aggregation is generic: adding an extension requires no change to the runner or to any other extension.
+
+### Determinism guarantees
+
+- Given identical vault state, an extension's findings are identical
+- An extension never writes outside its own directory except a heartbeat log, if it keeps one
+- A failing or missing extension does not abort discovery of the others
+
+### Out of scope (post-v1.0)
+
+- Extension dependency ordering (extensions are independent by construction)
+- A manifest/marketplace format for distributing third-party extensions
+- Extensions that gate the chain (exit nonzero) — a check that must block belongs in the automation chain proper, not the extension surface
