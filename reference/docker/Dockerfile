@@ -14,14 +14,21 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git cron ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Build context MUST be apps/system-o/ (the parent of both reference/ and
+# spec/) -- NOT reference/ itself. spec/wrap-tail-repair.example.yaml lives
+# outside reference/, and Docker can't reach outside its context via '../'.
+# docker-compose.example.yml and the README set `context: ..` for this reason
+# (found the hard way: this mismatch went unnoticed until the first real
+# `docker build`, since nothing had ever actually built this image before).
+#
 # The framework ships here, immutable, separate from the operator's vault.
-COPY scripts/     /opt/system-o/scripts/
-COPY extensions/  /opt/system-o/extensions/
-COPY templates/   /opt/system-o/templates/
+COPY reference/scripts/     /opt/system-o/scripts/
+COPY reference/extensions/  /opt/system-o/extensions/
+COPY reference/templates/   /opt/system-o/templates/
 COPY spec/wrap-tail-repair.example.yaml /opt/system-o/wrap-tail-repair.example.yaml
-COPY docker/entrypoint.ps1  /opt/system-o/entrypoint.ps1
-COPY docker/bootstrap.ps1   /opt/system-o/bootstrap.ps1
-COPY docker/crontab.example /opt/system-o/crontab.example
+COPY reference/docker/entrypoint.ps1  /opt/system-o/entrypoint.ps1
+COPY reference/docker/bootstrap.ps1   /opt/system-o/bootstrap.ps1
+COPY reference/docker/crontab.example /opt/system-o/crontab.example
 
 # Bind-mounted at runtime — see docker-compose.example.yml. Declaring the
 # volume here documents the contract even for a plain `docker run`.

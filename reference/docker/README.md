@@ -4,9 +4,16 @@
 
 ## Try it
 
+Run from `reference/docker/` (the compose file's `context: ../..` expects `apps/system-o/` as the build root — the Dockerfile needs both `reference/` and `spec/` in scope):
+
 ```
 cp docker-compose.example.yml docker-compose.yml
 docker compose up -d
+```
+
+Or build directly without compose, from the `apps/system-o/` repo root:
+```
+docker build -t system-o -f reference/docker/Dockerfile .
 ```
 
 First start scaffolds `./my-vault` with the locked folder taxonomy (spec §File & folder taxonomy), a starter `_meta/GLOSSARY.md`, `_meta/HOME.md`, `_meta/session-log.md`, and an orientation file (`CLAUDE.md` by default — set `AGENT_TARGET: AGENTS.md` for a non-Claude agent). Re-running `docker compose up` against an existing vault only reinstalls the crontab — it never re-scaffolds over real content (`bootstrap.ps1` checks for `_meta/session-log.md` first).
