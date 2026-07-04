@@ -24,6 +24,7 @@ First start scaffolds `./my-vault` with the locked folder taxonomy (spec §File 
 - **Extensions run, but check nothing until configured.** `run-extensions.ps1` is cron'd from minute one (read-only, no external dependency — safe by construction), but `source-drift` specifically no-ops until you add its `checks.yaml` (see `reference/extensions/source-drift/README.md`).
 - **Stage 2 onboarding doesn't run here.** The bootstrap only does the deterministic stage-1 pass (distribution review D8) — scaffolding and starter files. Refining the glossary and orientation-file prose needs an agent harness pointed at `/vault`, working through `_meta/templates/onboarding-stage2.prompt.md` — intentionally outside this container's job, since it provides no agent.
 - **Obsidian plugins aren't installed.** Per D7 (install-time manifest), plugin resolution happens on the host side where Obsidian actually runs — this container has no opinion on your editor.
+- **Obsidian itself isn't installed either.** If your host is Linux and doesn't already have it, `reference/scripts/install-obsidian.ps1` resolves the current release dynamically from GitHub (never a pinned version), verifies the download against GitHub's own recorded checksum for that asset, and installs the AppImage (Obsidian publishes no native `.rpm`, so AppImage is the one path that works on any distro; pass `-PreferDeb` for a native `.deb` install on Debian-family hosts).
 
 ## Signal handling
 
