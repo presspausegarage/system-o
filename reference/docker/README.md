@@ -4,6 +4,8 @@
 
 **Recommended: VS Code, Remote-SSH into the host running the container.** This is the concrete reason it's the default suggestion for exactly this deployment shape — Remote-SSH edits the bind-mounted vault live from your own already-installed desktop, with zero GUI app needed on the container/VM side. A plain text editor over the same SSH connection works identically for the same reason. Obsidian is fully supported too if you prefer it (`reference/scripts/install-obsidian.ps1`), but it's a full Electron GUI app that needs to actually run somewhere with display output — on a headless server or a VM without GPU passthrough, that's real friction Remote-SSH simply doesn't have.
 
+Kanban visualization is entirely bring-your-own — no board-view tool ships or is recommended; set one up yourself if you want one (e.g. an extension that reads the same markdown-checkbox format `Kanban.md` files already use). For anyone without one, `reference/scripts/build-kanban-csv.ps1` writes a `Kanban.csv` next to every `Kanban.md` it finds — one row per task, openable in any spreadsheet app or VS Code's built-in CSV preview, no extension required. Same core-without-any-editor principle as `build-static-home.ps1`'s Dataview fallback, applied to boards instead of the registry.
+
 ## Try it
 
 Run from `reference/docker/` (the compose file's `context: ../..` expects `apps/system-o/` as the build root — the Dockerfile needs both `reference/` and `spec/` in scope):
