@@ -72,6 +72,8 @@ Degradation is required design, not a fallback courtesy:
 
 A conforming vault ships a glossary (`_meta/GLOSSARY.md`): one compact table of the vault's ubiquitous language (~20 terms). The glossary is a conformance artifact, not fixed vocabulary — its terms are defined by the operator during onboarding. Loop prompt templates and orientation files reference glossary terms rather than re-defining them.
 
+Onboarding is two stages (distribution review D8): stage 1 is the deterministic bootstrap (scaffolds locked folders and starter files, no LLM); stage 2 is an agent-guided pass that replaces the starter glossary and orientation file with content specific to the adopter's vault, confirming genuine ambiguities rather than guessing (`reference/templates/stage-2-onboarding.prompt.md`). Stage 2 fills in the operator's answers; it never relitigates anything spec-locked.
+
 ---
 
 ## § File & folder taxonomy
