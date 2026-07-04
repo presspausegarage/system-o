@@ -49,6 +49,16 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Force UTF-8 for capturing claude-cli's stdout — found on the reference vault
+# 2026-07-04: PowerShell's pipe capture of a native process's output depends on
+# ambient console/$OutputEncoding state, which can differ between invocation modes
+# (e.g. `pwsh -File` vs `pwsh -Command`, or a scheduled task's console allocation
+# vs an interactive session). Without this forced, an endpoint's correct em-dash
+# can decode as mojibake, tripping the verifier's structural check even though the
+# model's output was correct — not a model or prompt bug, a stdout-decoding one.
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
 # --- Manifest parser -------------------------------------------------------
 # Parses exactly the loop-manifest schema (not a general YAML parser) — same
 # stance as transform-orientation.ps1's manifest reader.
