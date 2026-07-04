@@ -1,9 +1,16 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-  Install Obsidian on a Linux host — the spec's "Obsidian-augmented" optional
-  layer (§System architecture layer 4), resolved dynamically and verified.
+  Install Obsidian on a Linux host — one operator-preference editor option
+  (§System architecture layer 4, optional), resolved dynamically and verified.
 .DESCRIPTION
+  Decided 2026-07-04: VS Code + Remote-SSH is the recommended default for
+  this stack (see reference/docker/README.md) — no GUI app needed on the
+  container/VM side at all, which sidesteps the exact class of friction a
+  full day of Hyper-V GPU-passthrough work couldn't cleanly resolve for
+  Obsidian specifically. This script remains for operators who prefer
+  Obsidian anyway; it is not the suggested first path.
+
   Never hardcodes a version or URL: queries GitHub's official release API
   for whatever is CURRENT at run time, so this script doesn't go stale the
   way a pinned download link would. Downloads the asset matching the host's
