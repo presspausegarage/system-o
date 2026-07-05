@@ -94,24 +94,23 @@ Three properties distinguish a darkloop from a set of cron entries:
 
 ### Rings
 
-The cycle decomposes into rings by cadence, innermost (fastest) outward. The rings are the visualization contract: any surface presenting "what the system does" presents these rings.
+The cycle decomposes into rings by cadence, innermost (fastest) outward, each ring's period an order of magnitude or more beyond the one it contains — true nesting, not just sequence. This is why **Chain** and **Session** share one ring rather than each taking their own: a chain run and a session are the same daily timescale, alternating within a day, not one nested inside repeated cycles of the other. Real nesting resumes at **Synthesis** (folds ~7 Day revolutions) and **Retention** (folds many Synthesis revolutions). The rings are the visualization contract: any surface presenting "what the system does" presents these rings, sized by cadence (log scale) so the seconds-to-year span reads as size, not just a list.
 
 | Ring | Name | Cadence | Custody | One revolution |
 |---|---|---|---|---|
-| 0 | **Cell** | per finding | dark | detect → propose → verify → apply (§System architecture) |
-| 1 | **Chain** | nightly (typical) | dark | the scheduled pass: gates → loop runners → heartbeats → report build |
-| 2 | **Session** | operator-paced | **light** | resume from handoff → attended work → wrap tail |
-| 3 | **Synthesis** | weekly (typical) | dark | roll-up of rings 1–2 into a strategic review, read attended |
-| 4 | **Retention** | multi-day → quarterly | dark | sweep, purge, archive — the slowest state machines |
+| 0 | **Cell** | seconds–minutes, per finding | dark | detect → propose → verify → apply (§System architecture) |
+| 1 | **Day** | ~24h | **split** — dark arc (chain) / light arc (session) | the daily alternation: the chain runs while dark, then the operator holds custody through a session, until the next chain |
+| 2 | **Synthesis** | weekly (typical) | dark | roll-up of ~7 Day revolutions into a strategic review, read attended |
+| 3 | **Retention** | multi-day → quarterly/annual | dark | sweep, purge, archive — the slowest state machines |
 
 ### Crossings
 
-Custody transfers at exactly two crossings, and each crossing **is** a vault artifact — never an out-of-band message alone:
+Custody transfers at exactly two points on the Day ring — where its arc changes color — and each crossing **is** a vault artifact, never an out-of-band message alone:
 
 | Crossing | Direction | Artifact |
 |---|---|---|
-| **Dawn** | dark → light | The surfacing bundle: built report, review queue, heartbeat summary. The operator re-enters by reading evidence, not by trusting silence. |
-| **Dusk** | light → dark | The wrap tail: handoff + session-log entry + dashboard bump. The chain audits this crossing; an incomplete wrap is a detectable finding (repairable by a loop cell), not a mystery. |
+| **Dawn** | dark arc → light arc | The surfacing bundle: built report, review queue, heartbeat summary. The operator re-enters by reading evidence, not by trusting silence. |
+| **Dusk** | light arc → dark arc | The wrap tail: handoff + session-log entry + dashboard bump. The chain audits this crossing; an incomplete wrap is a detectable finding (repairable by a loop cell), not a mystery. |
 
 ### Invariants
 
