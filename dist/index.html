@@ -227,6 +227,7 @@ const COMMANDS = {
     <Line><Teal>help</Teal>        <Dim2> ·  list commands</Dim2></Line>,
     <Line><Teal>about</Teal>       <Dim2> ·  what is system-o</Dim2></Line>,
     <Line><Teal>spec</Teal>        <Dim2> ·  v1.0 spec overview (7 sections)</Dim2></Line>,
+    <Line><Teal>darkloop</Teal>    <Dim2> ·  the operating cycle · live dial</Dim2></Line>,
     <Line><Teal>iso</Teal>         <Dim2> ·  ISO 13485 quality alignment</Dim2></Line>,
     <Line><Teal>install</Teal>     <Dim2> ·  capability requirements</Dim2></Line>,
     <Line><Teal>github</Teal>      <Dim2> ·  open repository</Dim2></Line>,
@@ -327,6 +328,16 @@ const COMMANDS = {
     <Gap />,
     <Line><Dim2>Conformance test:</Dim2>  spin a clean environment · install your stack · drop the bundle · run for one day · verify conventions hold</Line>,
   ],
+
+  darkloop: () => {
+    setTimeout(() => {
+      window.location.href = '/darkloop.html';
+    }, 500);
+    return [
+      <Line><Teal>Entering the darkloop...</Teal></Line>,
+      <Line><Dim2>custody → chain · report at dawn</Dim2></Line>,
+    ];
+  },
 
   github: () => {
     setTimeout(() => {
