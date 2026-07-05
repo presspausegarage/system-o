@@ -1,6 +1,6 @@
 # system-o specification — v0.1 draft
 
-> **Status:** draft — sections committed as drafted; remaining 6 of 10 v1.0 sections in progress.
+> **Status:** draft — 7 sections committed as drafted; remaining v1.0 sections in progress.
 > **Form:** single file; hard ceiling 1500 lines, target 600–800. Split into modules above ceiling.
 > **Scope:** portable spec layer only — no reference-implementation detail, no distribution mechanics.
 
@@ -73,6 +73,59 @@ Degradation is required design, not a fallback courtesy:
 A conforming vault ships a glossary (`_meta/GLOSSARY.md`): one compact table of the vault's ubiquitous language (~20 terms). The glossary is a conformance artifact, not fixed vocabulary — its terms are defined by the operator during onboarding. Loop prompt templates and orientation files reference glossary terms rather than re-defining them.
 
 Onboarding is two stages (distribution review D8): stage 1 is the deterministic bootstrap (scaffolds locked folders and starter files, no LLM); stage 2 is an agent-guided pass that replaces the starter glossary and orientation file with content specific to the adopter's vault, confirming genuine ambiguities rather than guessing (`reference/templates/stage-2-onboarding.prompt.md`). Stage 2 fills in the operator's answers; it never relitigates anything spec-locked.
+
+---
+
+## § Darkloop
+
+### Purpose
+
+Names the system's operating cycle so an adopter — and any surface built over the vault — can visualize what the system *does*: custody of the vault alternates between an attended session and an unattended automation pass, and every crossing between the two is a vault artifact. **Darkloop** (one word) is system-o's term of art. It deliberately diverges from the *dark factory* lineage (lights-out production, human removed): in a darkloop the operator is never removed, only **time-shifted** — the unattended pass runs while they are away and re-surfaces its evidence at a fixed re-entry point. Silence is a detectable failure, never an acceptable state.
+
+### Definition
+
+The darkloop is a conforming vault's unattended operating cycle: the scheduled pass in which the automation chain (layer 2), the loop layer (layer 3), and the extension heartbeats maintain the vault's invariants with no operator present, terminating in a surfacing artifact the operator reads on return.
+
+Three properties distinguish a darkloop from a set of cron entries:
+
+1. **Closed over the vault** — it reads vault state and writes vault state (within declared scopes, through declared gates); no side channel is load-bearing
+2. **Human time-shifted, not removed** — every revolution terminates in surfacing (report + review queue); unreviewed LLM output waits in the review queue per §Apply modes
+3. **Silence is detectable** — heartbeats make "didn't run" distinguishable from "ran clean"; a missing heartbeat is itself a surfaced finding
+
+### Rings
+
+The cycle decomposes into rings by cadence, innermost (fastest) outward. The rings are the visualization contract: any surface presenting "what the system does" presents these rings.
+
+| Ring | Name | Cadence | Custody | One revolution |
+|---|---|---|---|---|
+| 0 | **Cell** | per finding | dark | detect → propose → verify → apply (§System architecture) |
+| 1 | **Chain** | nightly (typical) | dark | the scheduled pass: gates → loop runners → heartbeats → report build |
+| 2 | **Session** | operator-paced | **light** | resume from handoff → attended work → wrap tail |
+| 3 | **Synthesis** | weekly (typical) | dark | roll-up of rings 1–2 into a strategic review, read attended |
+| 4 | **Retention** | multi-day → quarterly | dark | sweep, purge, archive — the slowest state machines |
+
+### Crossings
+
+Custody transfers at exactly two crossings, and each crossing **is** a vault artifact — never an out-of-band message alone:
+
+| Crossing | Direction | Artifact |
+|---|---|---|
+| **Dawn** | dark → light | The surfacing bundle: built report, review queue, heartbeat summary. The operator re-enters by reading evidence, not by trusting silence. |
+| **Dusk** | light → dark | The wrap tail: handoff + session-log entry + dashboard bump. The chain audits this crossing; an incomplete wrap is a detectable finding (repairable by a loop cell), not a mystery. |
+
+### Invariants
+
+- Custody alternates only at crossings; every crossing leaves a durable artifact in the vault
+- The dark half never blocks the light half: with the chain dead, the vault remains fully operable; the outage surfaces at the next dawn crossing as a missing heartbeat
+- Rings do not redefine loops — a loop cell is still defined by the invariant it maintains, not by its position in any schedule; rings describe when revolutions occur and who is present
+- Clock times are adopter-chosen and host-native; the darkloop is defined by custody and the three properties, not by the clock — an operator who fires the chain by hand at noon has still run the darkloop
+- `darkloop` is spec vocabulary: defined here, referenced (never re-defined) by prompts, orientation files, and glossaries
+
+### Out of scope (post-v1.0)
+
+- Prescribed schedule times or scheduler syntax (host-native, per layer 2)
+- A darkloop visualization UI — layer 6, render-only; candidate surface is the reference HUD
+- Multi-vault or federated darkloops (one vault, one cycle)
 
 ---
 
