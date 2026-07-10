@@ -81,7 +81,7 @@ local: launchpad/$normSlug
 phase: idea
 risk: 2
 priority: 2
-description: $descVal
+description: "$($descVal -replace '"','\"')"
 created: $todayIso
 decide_by: $decideIso
 updated: $todayIso

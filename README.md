@@ -24,7 +24,7 @@ Strip the operator's specific content (projects, drafts, journal entries, busine
 2. **Reference implementation** — the live workspace at `C:\dev`. The automation chain, loop layer, lifecycle conventions, and guards running in production; every spec section is written from a working instance, not prospectively. *Explicitly out of scope:* Andy's own web operation (`web/webmaster/`, the sites) and vertical workflows — siblings that **use** the OS, not part of it.
 3. **Distribution** — the installable bundle (future; this project at `apps/system-o/` is where that packaging engineering happens). Fresh-install scaffolding plus an onboarding process — including populating the vault's own `_meta/GLOSSARY.md` — that instantiates the spec for someone other than Andy.
 
-The layers feed forward: the reference implementation hardens the spec; the spec is what the distribution installs. [[launchpad/opendev/README|OpenDev]] remains an umbrella child on the reference-implementation side.
+The layers feed forward: the reference implementation hardens the spec; the spec is what the distribution installs. OpenDev — formerly proposed as an umbrella child on the reference-implementation side — was buried 2026-05-17 (see [[_archive/2026-Q2/opendev/tombstone|tombstone]]); no successor is currently in flight for that role.
 
 ## What problem does it solve?
 
@@ -61,8 +61,8 @@ Captured April 26, 2026, in the same session that produced [[apps-mobile-copy-ed
 
 **Children of system-o's umbrella** (cross-references to wire post-graduation):
 
-In-flight launchpad ideas — each generic to the OS layer:
-- [[launchpad/opendev/README|OpenDev]] — vault-only mirror; absorbs the agent-agnostic vault mission per user direction (April 26, 2026)
+Formerly in-flight, generic to the OS layer:
+- [[_archive/2026-Q2/opendev/README|OpenDev]] (buried 2026-05-17 — [[_archive/2026-Q2/opendev/tombstone|tombstone]]) — vault-only mirror; was to absorb the agent-agnostic vault mission per user direction (April 26, 2026)
 
 Folded in (no longer separate launchpad items):
 - **WTS2** — rolled into system-o on April 26, 2026; tombstone at `_archive/2026-Q2/wts2/tombstone.md`. The unified offline scheduling + observability concept. User-confirmed load-bearing: *"WTS2 would be built into this system as the ps1 scripts and other bits controlling the operator os; offline automation is critical for the containerization idea."* The work continues inside system-o as the offline-first automation chain (see bundle list above).
