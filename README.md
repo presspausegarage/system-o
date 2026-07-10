@@ -6,23 +6,25 @@
 
 A **"markdown OS"** — the generic, installable layer of vault scaffolding, automation, conventions, plugin set, and agent-portability primitives validated at `C:\dev\` over months of operator-vault work. Not Andy's specific projects or web operation; the underlying OS-like substrate any AI-augmented operator could install fresh and run on. Bundles:
 
-- **Obsidian vault skeleton** — folder structure, `_meta/` scaffolding, conventions, system-map, registry templates, daily-note template, idea-README template
+- **Vault skeleton** — folder structure, `_meta/` scaffolding, conventions, system-map, registry templates, daily-note template, idea-README template. Editor-agnostic by design (spec §System architecture layer 4) — any markdown-capable editor works against it unmodified.
 - **Offline-first automation chain** — PowerShell scripts in `_meta/scripts/` (triage, sweep-handoffs, backup-dev, build-radar-digest, build-daily-report, graduate, bury, apply-proposals, plus reminder-template) configured against generic placeholders rather than hardcoded paths. **Load-bearing principle**: the OS runs without cloud or network — local Task Scheduler + local scripts only. Cloud is optional augmentation, never a dependency. This is what makes the containerization idea coherent — a "markdown OS" that requires constant cloud isn't an OS, it's a UI.
-- **Obsidian plugin set + manifest** — Dataview, Templater, Kanban, Canvas, etc., as a community-plugin spec that an installer can resolve
+- **Recommended editor: VS Code, via Remote-SSH or a local clone.** Decided July 4, 2026, mirroring Andy's day job (VS Code is "the standard" there — a designated default, not a mandate). Concretely the better fit for this stack: Remote-SSH edits a container/VM-hosted vault live from the operator's own already-installed desktop, with no GUI app needed on the remote host at all — the exact class of problem (Electron/GPU/display-passthrough into a Linux VM) that a full day of Hyper-V DDA work couldn't cleanly solve for Obsidian. **Obsidian remains fully supported as an operator preference** — `reference/scripts/install-obsidian.ps1` installs it for anyone who wants it specifically — just no longer the augmentation layer's default suggestion.
+- **Obsidian plugin set + manifest** (optional, for operators who choose Obsidian) — Dataview, Templater, Kanban, Canvas, etc., as a community-plugin spec that an installer can resolve
 - **HTML / Canvas views** — `system-map.canvas`, HOME dashboard, per-project Dashboard skeletons that don't depend on user-specific content
 - **Lifecycle conventions** — handoffs (verification-block mechanic), frontmatter tiers, risk tiers (1/2/3), decide-by clocks, sweep windows (7d), sewerpipe (30d), surveillance radar
 - **Agent-portability stance** — gates as local-deterministic, LLM as pluggable endpoint, `CLAUDE.md` canonical for Claude with parallel `AGENTS.md` slot for other agents (deferred to OpenDev's design)
 
 Strip the operator's specific content (projects, drafts, journal entries, business-specific tooling like webmaster, vertical workflows like email-driven editorial), leave the OS, package it for fresh install.
 
-## Scope: umbrella vs. package
+## Scope: three layers
 
-**system-o is two things sharing a name** (see open question about whether to split):
+**system-o is one thing in three layers** (reframed July 2, 2026, from the earlier "two things sharing a name"; the loop-cell architecture review made the split legible):
 
-1. **Architectural umbrella** — spans the generic automation chain (`_meta/scripts/`), the lifecycle conventions, the agent-portability stance, and the in-flight tooling launchpad item [[launchpad/opendev/README|OpenDev]]. Everything generic-to-the-OS layer, nothing operator-specific. *Explicitly out of scope:* Andy's own web operation (`web/webmaster/`, the 5 sites) and vertical workflows like editorial QC (formerly `apps/mobile-copy-edits/`, archived 2026-05-02) — those are siblings that **use** the OS, not part of it.
-2. **Concrete project / distributable** — this project at `apps/system-o/`. The packaged bundle that makes the OS installable for someone other than Andy.
+1. **Spec** — `spec/SPEC.md`. The portable contracts: layered architecture, loop cell, orientation files, transform + loop manifests, determinism guarantees. What an adopter conforms *to*, independent of any implementation.
+2. **Reference implementation** — the live workspace at `C:\dev`. The automation chain, loop layer, lifecycle conventions, and guards running in production; every spec section is written from a working instance, not prospectively. *Explicitly out of scope:* Andy's own web operation (`web/webmaster/`, the sites) and vertical workflows — siblings that **use** the OS, not part of it.
+3. **Distribution** — the installable bundle (future; this project at `apps/system-o/` is where that packaging engineering happens). Fresh-install scaffolding plus an onboarding process — including populating the vault's own `_meta/GLOSSARY.md` — that instantiates the spec for someone other than Andy.
 
-The project is about (2), but (2) only makes sense as a realization of (1). `apps/system-o/` is where the packaging engineering happens; the architectural umbrella keeps living in the meta-docs.
+The layers feed forward: the reference implementation hardens the spec; the spec is what the distribution installs. OpenDev — formerly proposed as an umbrella child on the reference-implementation side — was buried 2026-05-17 (see [[_archive/2026-Q2/opendev/tombstone|tombstone]]); no successor is currently in flight for that role.
 
 ## What problem does it solve?
 
@@ -42,9 +44,9 @@ In <2 hours: inventory **what would actually go in the bundle vs. what's user-sp
 
 ## Open questions
 
-- **Architecture vs. project — same name?** system-o is currently both: the architectural concept (umbrella spanning OpenDev, the offline-first automation chain, and the lifecycle conventions) AND the concrete distributable. Worth keeping the same name, or split — e.g. system-o the architecture vs. a different name for the package?
-- **Distribution form** — git template repo? `npx create-systemo`-style scaffold? Downloadable installer that drops `.obsidian/` config + `_meta/` skeleton + conventions? Something else?
-- **Plugin licensing** — third-party Obsidian plugins (Dataview, Templater, Kanban) can't generally be redistributed; ship a manifest that the installer pulls at install time, or document the plugin set as a prerequisite dependency?
+- ~~**Architecture vs. project — same name?**~~ Resolved July 2, 2026 by the three-layer reframe (§Scope): one name, three layers — spec / reference implementation / distribution. No split needed; the layers, not separate names, carry the distinction.
+- **Distribution form** — git template repo? `npx create-systemo`-style scaffold? Downloadable installer that drops `_meta/` skeleton + conventions (and `.obsidian/` config only if the operator opts into the Obsidian layer)? Something else?
+- ~~**Plugin licensing**~~ Resolved by D7 (install-time manifest, per the distribution review): third-party Obsidian plugins (Dataview, Templater, Kanban) resolve at install time with operator consent, never redistributed. Moot for the VS Code default path — plugin licensing only applies to operators who opt into the Obsidian layer.
 - **`CLAUDE.md` / `AGENTS.md` story** — package can't ship Andy's specific `CLAUDE.md`, but probably ships a template version adopters customize. How does the agent-portability story (per [[agent-portability]]) land in the package?
 - **Relationship to OpenDev** — OpenDev's vault-mirror approach effectively produces a generic vault artifact (vault separated from code). Is OpenDev's output the input to system-o's packaging? Or do they diverge in scope?
 - **Public-availability check** — domain `system-o.org` registered (April 26, 2026); not yet pointed. Repo lives at `presspausegarage/system-o` — open question whether a dedicated `system-o` GitHub org makes sense once contributors arrive. npm package name TBD if a scaffolder ships.
@@ -59,8 +61,8 @@ Captured April 26, 2026, in the same session that produced [[apps-mobile-copy-ed
 
 **Children of system-o's umbrella** (cross-references to wire post-graduation):
 
-In-flight launchpad ideas — each generic to the OS layer:
-- [[launchpad/opendev/README|OpenDev]] — vault-only mirror; absorbs the agent-agnostic vault mission per user direction (April 26, 2026)
+Formerly in-flight, generic to the OS layer:
+- [[_archive/2026-Q2/opendev/README|OpenDev]] (buried 2026-05-17 — [[_archive/2026-Q2/opendev/tombstone|tombstone]]) — vault-only mirror; was to absorb the agent-agnostic vault mission per user direction (April 26, 2026)
 
 Folded in (no longer separate launchpad items):
 - **WTS2** — rolled into system-o on April 26, 2026; tombstone at `_archive/2026-Q2/wts2/tombstone.md`. The unified offline scheduling + observability concept. User-confirmed load-bearing: *"WTS2 would be built into this system as the ps1 scripts and other bits controlling the operator os; offline automation is critical for the containerization idea."* The work continues inside system-o as the offline-first automation chain (see bundle list above).

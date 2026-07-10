@@ -1,0 +1,31 @@
+# source-drift check manifest (example — copy to _meta/extensions/source-drift/checks.yaml
+# and edit for your own vault; the extension no-ops with a clean status until that file
+# exists). Each check declares ONE canonical fact (source) and one or more places that
+# restate it (derived). A mismatch is doc rot, caught mechanically.
+#
+# Patterns are .NET regex with exactly one capture group around the value being
+# compared; source and derived must extract the SAME logical value (same units,
+# same format) so a straight string comparison is meaningful.
+
+checks:
+  # Example: a version number is declared once in SPEC.md's title line and restated
+  # in README's "built against spec vN.N" line. If SPEC.md ships a new version and
+  # README isn't updated in the same pass, this catches it.
+  - name: spec version referenced in README
+    source:
+      file: spec/SPEC.md
+      pattern: 'specification — v(\d+\.\d+)'
+    derived:
+      - file: README.md
+        pattern: 'built against spec v(\d+\.\d+)'
+
+  # Example: a project count lives canonically in a registry directory (count the
+  # cards) — for a regex-based extraction, point this at any file that already
+  # states the count as a number, e.g. a generated roster header.
+  - name: active project count
+    source:
+      file: _meta/repo-map.md
+      pattern: '(\d+) active project'
+    derived:
+      - file: README.md
+        pattern: '(\d+) active project'
