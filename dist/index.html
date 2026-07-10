@@ -113,50 +113,39 @@ const BOOT_LINES = [
 ];
 
 // ─── O-BOY (interactive ASCII friend) ─────────────────────────────
+// Poses are eyes+mouth pairs framed into the same 7-line box. The original
+// six are the click-toy cycle (cosmetic, random). thinking/sleep/error are
+// named, state-driven expressions the HUD pill (below) reflects live status
+// with — not part of the random click cycle.
+function oBoyFrame(eyes, mouth) {
+  return [
+    '   ___   ',
+    '  |' + eyes + '|  ',
+    '  |' + mouth + '|  ',
+    '  |___|  ',
+    '   | |   ',
+    '  /| |\\  ',
+    '   |_|   ',
+  ];
+}
+
 const O_BOY_POSES = [
-  ['   ___   ',
-   '  |o o|  ',
-   '  | _ |  ',
-   '  |___|  ',
-   '   | |   ',
-   '  /| |\\  ',
-   '   |_|   '],
-  ['   ___   ',
-   '  |- -|  ',
-   '  | _ |  ',
-   '  |___|  ',
-   '   | |   ',
-   '  /| |\\  ',
-   '   |_|   '],
-  ['   ___   ',
-   '  |^ ^|  ',
-   '  |\\_/|  ',
-   '  |___|  ',
-   '   | |   ',
-   '  /| |\\  ',
-   '   |_|   '],
-  ['   ___   ',
-   '  |O O|  ',
-   '  | o |  ',
-   '  |___|  ',
-   '   | |   ',
-   '  /| |\\  ',
-   '   |_|   '],
-  ['   ___   ',
-   '  |- o|  ',
-   '  | _ |  ',
-   '  |___|  ',
-   '   | |   ',
-   '  /| |\\  ',
-   '   |_|   '],
-  ['   ___   ',
-   '  |z z|  ',
-   '  | _ |  ',
-   '  |___|  ',
-   '   | |   ',
-   '  /| |\\  ',
-   '   |_|   '],
+  oBoyFrame('o o', ' _ '),
+  oBoyFrame('- -', ' _ '),
+  oBoyFrame('^ ^', '\\_/'),
+  oBoyFrame('O O', ' o '),
+  oBoyFrame('- o', ' _ '),
+  oBoyFrame('z z', ' _ '),
 ];
+
+// Named expressions the HUD pill drives from qa-status.json (or its own
+// fetch/idle state) rather than the click cycle above.
+const O_BOY_EXPR = {
+  neutral:  oBoyFrame('o o', ' _ '),
+  thinking: oBoyFrame('. .', ' ? '),
+  sleep:    oBoyFrame('- -', ' z '),
+  error:    oBoyFrame('x x', ' ! '),
+};
 
 const O_BOY_SAYINGS = [
   'oh hi',
@@ -219,6 +208,100 @@ function OBoy() {
   );
 }
 
+// ─── HUD (collapsed pill · live qa-status, when a vault serves this file) ──
+// Minimal always-on state: o-boy eyes + clock. Click expands into the full
+// face + a one-line audit summary. On system-o.org there's no vault behind
+// this static page, so the fetch below 404s and the HUD settles into
+// 'sleep' — that's the honest state for "no live data," distinct from
+// 'error' (the audit ran and found something) (_meta/Kanban.md, post-v1.0).
+function useClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function HudPill() {
+  const [expanded, setExpanded] = useState(false);
+  const [audit, setAudit] = useState({ state: 'loading', summary: 'checking for live vault data…' });
+  const clock = useClock();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('_meta/logs/qa-status.json', { cache: 'no-store' })
+      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
+      .then(data => {
+        if (cancelled) return;
+        const flagged = Array.isArray(data.checks) ? data.checks.filter(c => c.status === 'flagged') : [];
+        setAudit({
+          state: data.ok === false || flagged.length > 0 ? 'error' : 'ok',
+          summary: data.ok === false || flagged.length > 0
+            ? `audit: ${flagged.length} flagged — ${flagged.map(c => c.name).join(', ')}`
+            : `audit: ${Array.isArray(data.checks) ? data.checks.length : 0} checks clear`,
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAudit({ state: 'sleep', summary: 'audit: no live vault data (static page)' });
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const expr = audit.state === 'loading' ? 'thinking'
+             : audit.state === 'error'   ? 'error'
+             : audit.state === 'sleep'   ? 'sleep'
+             : 'neutral';
+  const eyesOnly = O_BOY_EXPR[expr][1].slice(3, 6); // the 3-char eyes slot inside '  |xxx|  '
+
+  return (
+    <div
+      onClick={(e) => { e.stopPropagation(); setExpanded(x => !x); }}
+      style={{
+        position: 'fixed', top: 14, right: 16, zIndex: 20,
+        cursor: 'pointer', userSelect: 'none',
+        fontFamily: 'var(--mono)',
+      }}
+    >
+      {!expanded ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          border: '1px solid var(--border)', borderRadius: 999,
+          background: 'var(--surface)', padding: '5px 12px',
+          fontSize: 12,
+        }}>
+          <span style={{
+            color: expr === 'error' ? 'var(--red)' : 'var(--accent)',
+            whiteSpace: 'pre',
+          }}>{eyesOnly}</span>
+          <span style={{ color: 'var(--text-2)' }}>{clock}</span>
+        </div>
+      ) : (
+        <div style={{
+          border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+          background: 'var(--surface)', padding: '10px 14px',
+          fontSize: 12, minWidth: 220,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ color: 'var(--text-2)' }}>{clock}</span>
+            <span style={{ color: 'var(--text-3)' }}>{'‹ click to collapse ›'}</span>
+          </div>
+          {O_BOY_EXPR[expr].map((line, i) => (
+            <div key={i} style={{
+              color: expr === 'error' ? 'var(--red)' : 'var(--text)',
+              lineHeight: 1.1, whiteSpace: 'pre',
+            }}>{line}</div>
+          ))}
+          <div style={{ marginTop: 6, color: 'var(--text-3)' }}>{audit.summary}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── COMMAND REGISTRY ─────────────────────────────────────────────
 const COMMANDS = {
   help: () => [
@@ -227,6 +310,8 @@ const COMMANDS = {
     <Line><Teal>help</Teal>        <Dim2> ·  list commands</Dim2></Line>,
     <Line><Teal>about</Teal>       <Dim2> ·  what is system-o</Dim2></Line>,
     <Line><Teal>spec</Teal>        <Dim2> ·  v1.0 spec overview (10 sections)</Dim2></Line>,
+    <Line><Teal>tree</Teal>        <Dim2> ·  locked file &amp; folder taxonomy</Dim2></Line>,
+    <Line><Teal>darkloop</Teal>    <Dim2> ·  the operating cycle · live dial</Dim2></Line>,
     <Line><Teal>iso</Teal>         <Dim2> ·  ISO 13485 quality alignment</Dim2></Line>,
     <Line><Teal>install</Teal>     <Dim2> ·  capability requirements</Dim2></Line>,
     <Line><Teal>github</Teal>      <Dim2> ·  open repository</Dim2></Line>,
@@ -243,8 +328,8 @@ const COMMANDS = {
     <Line>Markdown folder into a structured operating environment for humans and agents.</Line>,
     <Gap />,
     <Line><Dim2>Three layers:</Dim2></Line>,
-    <Line>  <Blue>Spec</Blue>      <Dim2>folder taxonomy · frontmatter tiers · lifecycle state machines</Dim2></Line>,
-    <Line>           <Dim2>agent cascade rules · canonical vocabulary</Dim2></Line>,
+    <Line>  <Blue>Spec</Blue>      <Dim2>layered architecture · darkloop · loop cells · agent orientation cascade</Dim2></Line>,
+    <Line>           <Dim2>transform + loop manifests · file/folder taxonomy · extension surface</Dim2></Line>,
     <Line>  <Amber>Reference</Amber> <Dim2>one concrete implementation that satisfies the spec —</Dim2></Line>,
     <Line>           <Dim2>your choice of editor, scheduler, and agent host</Dim2></Line>,
     <Line>  <Dim>Distrib.</Dim>  <Dim2>scaffolder / installer — post-v1.0</Dim2></Line>,
@@ -254,21 +339,51 @@ const COMMANDS = {
   ],
 
   spec: () => [
-    <Line><Teal>v1.0 spec — 10 sections</Teal></Line>,
+    <Line><Teal>SPEC.md — 10 sections (v0.1 draft)</Teal></Line>,
     <HR />,
-    <Line><Dim2> 1</Dim2>  <Blue>Operating principles</Blue>   <Dim2>friction-free in · structured out · local-deterministic gates</Dim2></Line>,
-    <Line><Dim2> 2</Dim2>  <Blue>File & folder taxonomy</Blue> <Dim2>canonical top-level shape · adopter-named vs. locked</Dim2></Line>,
-    <Line><Dim2> 3</Dim2>  <Blue>Folder semantics</Blue>       <Dim2>who writes · who reads · never-touch invariants</Dim2></Line>,
-    <Line><Dim2> 4</Dim2>  <Blue>Frontmatter rules</Blue>      <Dim2>3-tier capture rule · required minimum on real notes</Dim2></Line>,
-    <Line><Dim2> 5</Dim2>  <Blue>Lifecycle state machines</Blue> <Dim2>launchpad → graduate/bury · handoff ready→complete · sewerpipe purge</Dim2></Line>,
-    <Line><Dim2> 6</Dim2>  <Blue>Inbox routing rules</Blue>    <Dim2>6 destinations · exactly one per item</Dim2></Line>,
-    <Line><Dim2> 7</Dim2>  <Blue>Registry schema</Blue>        <Dim2>required per-project card fields · slug as canonical ID</Dim2></Line>,
-    <Line><Dim2> 8</Dim2>  <Blue>Risk + priority schemas</Blue> <Dim2>two independent axes · defaults per lifecycle stage</Dim2></Line>,
-    <Line><Dim2> 9</Dim2>  <Blue>Agent-instructions cascade</Blue> <Dim2>CLAUDE.md / AGENTS.md · first-found wins · deterministic transform</Dim2></Line>,
-    <Line><Dim2>10</Dim2>  <Blue>Canonical vocabulary</Blue>   <Dim2>tombstone · sewerpipe · handoff · launchpad · graduate · bury</Dim2></Line>,
+    <Line><Dim2>1</Dim2>  <Blue>System architecture</Blue>      <Dim2>six-layer stack · the loop cell (detect→propose→verify→apply)</Dim2></Line>,
+    <Line>                          <Dim2>apply modes · measured conformance · endpoint degradation</Dim2></Line>,
+    <Line><Dim2>2</Dim2>  <Blue>Darkloop</Blue>                 <Dim2>the unattended operating cycle · custody rings, dawn/dusk crossings</Dim2></Line>,
+    <Line>                          <Dim2>operator time-shifted, never removed · silence is detectable</Dim2></Line>,
+    <Line><Dim2>3</Dim2>  <Blue>File & folder taxonomy</Blue>   <Dim2>locked paths every vault ships · adopter-named category roots</Dim2></Line>,
+    <Line><Dim2>4</Dim2>  <Blue>Agent orientation files</Blue>  <Dim2>CLAUDE.md / AGENTS.md · one canonical file per scope · cascade,</Dim2></Line>,
+    <Line>                          <Dim2>first-found wins · deterministic transform to the parallel</Dim2></Line>,
+    <Line><Dim2>5</Dim2>  <Blue>Transform manifest</Blue>       <Dim2>YAML schema: renames · paths · section edits · fixed op order</Dim2></Line>,
+    <Line><Dim2>6</Dim2>  <Blue>Loop manifest</Blue>            <Dim2>YAML schema per loop cell · scope/detect/verify/apply/endpoints</Dim2></Line>,
+    <Line>                          <Dim2>fail-closed runner semantics</Dim2></Line>,
+    <Line><Dim2>7</Dim2>  <Blue>Extension surface</Blue>        <Dim2>locked vs. extendable cleave · `_meta/extensions/&lt;name&gt;/check.ps1`</Dim2></Line>,
+    <Line>                          <Dim2>heartbeat contract · read-only, exit-0-always</Dim2></Line>,
+    <Line><Dim2>8</Dim2>  <Blue>Agent context bundle</Blue>      <Dim2>`_meta/agent-context/` schema · MEMORY.md + topic files · transform manifests</Dim2></Line>,
+    <Line><Dim2>9</Dim2>  <Blue>Template manifest</Blue>        <Dim2>canonical `reference/templates/` set · every template cited by a consumer</Dim2></Line>,
+    <Line><Dim2>10</Dim2> <Blue>Pluggability conformance test</Blue> <Dim2>two materially different specs, two materially different</Dim2></Line>,
+    <Line>                          <Dim2>conformant vaults — proves spec/reference-implementation is real</Dim2></Line>,
     <Gap />,
     <Line><Dim2>Target:</Dim2>  single SPEC.md · 600–800 lines · hard ceiling 1500</Line>,
-    <Line><Dim2>V1.0 definition:</Dim2>  spin clean VM · install stack · drop bundle · run for a day · verify conventions hold</Line>,
+    <Line><Dim2>V1.0 definition:</Dim2>  Docker primary (Windows + Linux host) + Windows-native reference · loop layer required, verified via stub endpoint driver</Line>,
+  ],
+
+  tree: () => [
+    <Line><Teal>Locked file &amp; folder taxonomy</Teal> <Dim2>— spec §File &amp; folder taxonomy</Dim2></Line>,
+    <HR />,
+    <Line><Dim>.</Dim></Line>,
+    <Line><Dim>├── </Dim>CLAUDE.md <Dim2>or AGENTS.md — canonical orientation file (spec §Agent orientation files)</Dim2></Line>,
+    <Line><Dim>├── </Dim>_inbox/<Dim2>              capture pad — triage empties it</Dim2></Line>,
+    <Line><Dim>├── </Dim>_sewerpipe/<Dim2>          retention window before hard delete</Dim2></Line>,
+    <Line><Dim>└── </Dim>_meta/</Line>,
+    <Line><Dim>    ├── </Dim>registry/<Dim2>          one card per project</Dim2></Line>,
+    <Line><Dim>    ├── </Dim>handoffs/<Dim2>          session-close records</Dim2></Line>,
+    <Line><Dim>    ├── </Dim>session-log.md<Dim2>     chronological index, newest-at-top</Dim2></Line>,
+    <Line><Dim>    ├── </Dim>HOME.md<Dim2>             the workspace dashboard</Dim2></Line>,
+    <Line><Dim>    ├── </Dim>loops/<Dim2>              loop manifests (§Loop manifest)</Dim2></Line>,
+    <Line><Dim>    │   └── </Dim>proposals/<Dim2>      runner-owned review queue</Dim2></Line>,
+    <Line><Dim>    ├── </Dim>extensions/<Dim2>         one dir per extension (§Extension surface)</Dim2></Line>,
+    <Line><Dim>    ├── </Dim>scripts/<Dim2>            automation-chain scripts (layer 2)</Dim2></Line>,
+    <Line><Dim>    ├── </Dim>templates/<Dim2>          script-consumed templates (§Template manifest)</Dim2></Line>,
+    <Line><Dim>    ├── </Dim>agent-context/<Dim2>      operator memory + transform manifests (§Agent context bundle)</Dim2></Line>,
+    <Line><Dim>    └── </Dim>logs/<Dim2>               chain + loop-runner run logs</Dim2></Line>,
+    <Gap />,
+    <Line><Dim2>Not shown: adopter-named category roots (</Dim2>web/<Dim2>, </Dim2>apps/<Dim2>, </Dim2>games/<Dim2>, or any other split) —</Dim2></Line>,
+    <Line><Dim2>discovered dynamically, never hardcoded by a reference script (§File &amp; folder taxonomy).</Dim2></Line>,
   ],
 
   iso: () => [
@@ -325,6 +440,16 @@ const COMMANDS = {
     <Gap />,
     <Line><Dim2>Conformance test:</Dim2>  spin a clean environment · install your stack · drop the bundle · run for one day · verify conventions hold</Line>,
   ],
+
+  darkloop: () => {
+    setTimeout(() => {
+      window.location.href = '/darkloop.html';
+    }, 500);
+    return [
+      <Line><Teal>Entering the darkloop...</Teal></Line>,
+      <Line><Dim2>custody → chain · report at dawn</Dim2></Line>,
+    ];
+  },
 
   github: () => {
     setTimeout(() => {
@@ -452,6 +577,9 @@ function Terminal() {
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10,
         background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px)',
       }} />
+
+      {/* HUD collapsed pill — o-boy eyes + clock, expands on click (_meta/Kanban.md) */}
+      <HudPill />
 
       {/* terminal body */}
       <div
