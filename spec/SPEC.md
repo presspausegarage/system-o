@@ -1,6 +1,6 @@
 # system-o specification — v0.1 draft
 
-> **Status:** draft — 7 sections committed as drafted; remaining v1.0 sections in progress.
+> **Status:** draft — 10 sections committed as drafted; remaining v1.0 sections in progress.
 > **Form:** single file; hard ceiling 1500 lines, target 600–800. Split into modules above ceiling.
 > **Scope:** portable spec layer only — no reference-implementation detail, no distribution mechanics.
 
@@ -448,3 +448,135 @@ A conforming reference implementation ships one runner that discovers every `_me
 - Extension dependency ordering (extensions are independent by construction)
 - A manifest/marketplace format for distributing third-party extensions
 - Extensions that gate the chain (exit nonzero) — a check that must block belongs in the automation chain proper, not the extension surface
+
+---
+
+## § Agent context bundle
+
+### Purpose
+
+Agent harnesses default to persisting long-lived context (standing facts about the operator, their preferences, their projects) *outside* the vault — e.g. a home-directory memory store keyed to the harness's own identity. That breaks portability twice over: the context doesn't travel with the vault (a fresh clone or a different machine starts blank), and it isn't agent-agnostic (a Claude-specific store is invisible to a non-Claude harness reading the same vault). `_meta/agent-context/` is the vault-native, harness-agnostic home for this material — the spec gap §Transform manifest's `paths` example already gestures at (`~/.claude/projects/.../memory/` → `_meta/agent-context/`) without this section ever having defined what lives there.
+
+### Location
+
+`_meta/agent-context/` — already named as the target of the example path-override in §Transform manifest, and already locked into §File & folder taxonomy's determinism guarantees by extension of that folder's presence requirement. This section is the schema that folder holds itself to.
+
+### Schema
+
+```
+_meta/agent-context/
+  MEMORY.md                              # required — the index; one row per topic file, one line each
+  <topic-slug>.md                        # zero or more — one durable fact/preference per file, linked from MEMORY.md
+  transform-<source>-to-<target>.yaml    # zero or more — §Transform manifest instances (that section's Location is unchanged; this is the same directory)
+```
+
+Two kinds of tenant share one directory rather than each claiming a root-level folder: standing operator memory (`MEMORY.md` + topic files) and transform manifests (`transform-*.yaml`). They're distinguishable by filename pattern (`transform-*-to-*.yaml` vs. any other `.md`/`.yaml`), so no subfolder split is required for v1.0.
+
+### `MEMORY.md` — index contract
+
+- One line per topic file: a short label, a one-line summary, and a relative link (`[label](topic-slug.md)` or a vault wikilink, per the adopter's linking convention)
+- Ordered however the operator finds most scannable (recency, category, alphabetical) — the spec does not prescribe an order
+- Never holds the full fact itself — MEMORY.md is the table of contents; the topic file is the fact
+
+### Topic file contract
+
+- One durable fact, decision, or standing preference per file — not a running log (that's `_meta/session-log.md`'s job) and not a one-off task note (that's a handoff's or Kanban's job)
+- Filename is a slug: lowercase, hyphens or underscores, descriptive enough to be findable without opening it
+- Content is freeform prose — no required frontmatter; this is agent-consumed context, not a vault note subject to the frontmatter tiers of a "real" note elsewhere in the vault
+- Superseded facts are edited or replaced in place, not appended-and-left — a topic file states the current standing fact, not its history (contrast with an append-only ledger or decision log elsewhere in the vault)
+
+### Relationship to `_meta/session-log.md` and handoffs
+
+Three different lifespans, three different files — do not conflate them:
+
+| Artifact | Lifespan | Answers |
+|---|---|---|
+| `_meta/agent-context/*.md` | Standing, until superseded | "What does the agent need to know about this operator/vault on every session, indefinitely?" |
+| `_meta/handoffs/*.md` | One session-close, until swept | "What happened this session, what's next?" |
+| `_meta/session-log.md` | Append-only, growing | "What sessions happened, in order?" |
+
+### Determinism guarantees
+
+- `_meta/agent-context/` is present in every conforming vault (empty is fine; absent is not — same rule as §File & folder taxonomy's locked set)
+- No reference script writes into `_meta/agent-context/` — population is an onboarding/operator activity (stage 2, §System architecture's two-stage onboarding, or manual), never an automation-chain side effect
+- A missing `MEMORY.md` with topic files present is non-conformant (orphaned context an agent has no index into is not portable context)
+
+### Out of scope (post-v1.0)
+
+- A required frontmatter schema for topic files (kept freeform deliberately — see §Frontmatter's "real note" scope, which this directory sits outside of)
+- Automatic summarization or pruning of stale topic files — an operator/agent-guided edit, not a scripted transform
+- Multi-operator or shared agent-context (one vault, one operator's standing context — same single-tenant assumption §Darkloop makes for the vault as a whole)
+
+---
+
+## § Template manifest
+
+### Purpose
+
+`reference/templates/` is the fixed, script-consumed template set the reference implementation ships and copies wholesale into every bootstrapped vault (`bootstrap.ps1`'s `Copy-Item -Path '/opt/system-o/templates/*' ... -Recurse`). Copying "whatever's in the directory" with no declared inventory is fragile: nothing catches an orphaned file that no script or manifest actually cites, and every adopter's vault inherits it silently. This section is the declared inventory — the fixed v1.0 set, what consumes each entry, and the rule that keeps the set honest.
+
+### Canonical set (v1.0)
+
+| Template | Consumer | Purpose |
+|---|---|---|
+| `idea-README.md` | `launchpad.ps1` (writes it at scaffold time); `graduate.ps1` (the idea it seeded moves on) | Scaffold for a new `launchpad/<slug>/README.md` — defensibility screen, demand evidence, decide-by clock |
+| `loop-wrap-tail-repair.prompt.md` | `run-loop.ps1`, via the reference loop manifest's `prompt:` field (`wrap-tail-repair.example.yaml`) | The propose-step prompt template for the reference loop cell (§Loop manifest) |
+| `stage-2-onboarding.prompt.md` | An agent harness, pointed at it directly — by `bootstrap.ps1`'s completion message and by §System architecture's two-stage-onboarding description | The Stage 2 onboarding checklist: read what Stage 1 scaffolded, populate `GLOSSARY.md`, write the real orientation file, confirm ambiguities with the operator rather than guessing |
+
+Templates are **extendable** (§Extension surface's locked-vs-extendable table already says so: "Templates | Extendable | Adopters may add types"). This section fixes the v1.0 *canonical* set the spec itself ships and is answerable for; an adopter's own additions to their vault-local `_meta/templates/` are unaffected and untracked here.
+
+### Location and copy semantics
+
+- Source of truth: `reference/templates/` in the system-o repo
+- At bootstrap, the entire directory is copied verbatim into the vault's `_meta/templates/` (locked path, §File & folder taxonomy) — script-consumed templates live vault-local so a bootstrapped vault is self-contained and portable off the container that built it
+- Consumers resolve templates by bare filename against `_meta/templates/` (e.g. `run-loop.ps1` reads `_meta/templates/<manifest's prompt field>`) — never against `reference/templates/` directly once a vault exists
+
+### Determinism guarantees
+
+- Every file under `reference/templates/` is cited by name from at least one script, manifest field, or spec section — no unreferenced templates ship. (v1.0 audit finding, fixed in the same pass that added this section: `onboarding-stage2.prompt.md` was an unreferenced duplicate of `stage-2-onboarding.prompt.md` — divergent content, same purpose, only the latter was ever cited by SPEC.md or a script. Removed 2026-07-09; see `_meta/Kanban.md`.)
+- The canonical set is exactly the table above for v1.0 — adding, removing, or renaming a canonical template is a spec change, not a silent `reference/templates/` edit
+- No canonical template embeds vault-specific content (operator name, project slugs, real dates) — every placeholder is a `{{TOKEN}}` or generic prose an adopter's own onboarding fills in
+
+### Out of scope (post-v1.0)
+
+- A templates registry/marketplace for adopter-contributed templates (parallels §Extension surface's identical out-of-scope item)
+- Per-template versioning or migration tooling — v1.0 has one version of each canonical template, no upgrade path yet
+- Template variants keyed by adopter choice (e.g. a second `idea-README.md` flavor) — one canonical version per purpose, same rule §Agent orientation files applies to orientation files themselves
+
+---
+
+## § Pluggability conformance test
+
+### Purpose
+
+Confirms the spec/reference-implementation separation (§System architecture) is real rather than nominal: that adopter-specific content — category-root names, orientation-file prose, which loops run, which extensions are enabled — is genuinely not hardcoded into the reference scripts anywhere it claims to be adopter-named or extendable. Without a test that actually exercises divergence, "spec vs. reference implementation" is just two folders with a naming convention between them.
+
+This section's origin is a launchpad exploration (`system-o-modular`, opened May 6 2026) that proposed a dedicated install-time spec compiler (chezmoi-based) to make pluggability structural. That specific mechanism never shipped and is superseded — system-o's actual install path is the Docker/`bootstrap.ps1` route plus two-stage onboarding, already specified in §System architecture. What survives from that exploration, and is worth locking into the spec on its own merits, is the **test** it proposed as its own graduation bar: *two materially different specs should produce two materially different, independently conformant vaults.* Porting the goal without the abandoned mechanism is the point of this section.
+
+### The test
+
+Run the shipped bootstrap path (`reference/docker/bootstrap.ps1` → Stage 2 onboarding, §System architecture) twice, with two materially different operator inputs, and confirm it produces two materially different vaults:
+
+1. **Vault A — "default operator"** — e.g. the reference implementation's own shape: `web/` / `apps/` / `games/` / `tools/` category roots, Claude Code as primary agent (`CLAUDE.md` canonical), the shipped wrap-tail-repair loop as the sole active loop.
+2. **Vault B — "content-publishing operator"** — a structurally different shape: different category roots (e.g. `posts/` / `drafts/` / `assets/`), a non-Claude primary agent (`AGENTS.md` canonical — exercising §Agent orientation files' transform in the direction Vault A never touches), and a different loop cell entirely (e.g. an editorial-review loop, not wrap-tail-repair).
+
+Passing requires both properties, together:
+
+- **Divergence** — the two vaults differ in every adopter-named surface (§File & folder taxonomy's "Adopter-named" row, orientation-file content, the active loop set, enabled extensions) in ways that trace directly to the two different inputs, not to chance or manual post-editing
+- **Conformance** — both vaults independently satisfy every *locked* guarantee in this spec regardless of their divergence: §File & folder taxonomy's locked set present, §Agent orientation files' one-canonical-file rule, valid loop and transform manifests, `_meta/agent-context/` and `_meta/GLOSSARY.md` present
+
+A reference implementation that exposes a couple of config flags but is otherwise one hardcoded shape does not pass — the divergence has to be structural (different category roots, different primary agent, different loop), not cosmetic (a renamed folder, a different color scheme).
+
+### Relationship to the shipped install path
+
+`bootstrap.ps1` already carries two of the seams this test exercises: it takes `-AgentTarget` as a parameter (the canonical orientation filename — Vault A vs. Vault B's `CLAUDE.md`/`AGENTS.md` split) and discovers category roots dynamically rather than hardcoding them (§File & folder taxonomy's determinism guarantee: "No reference script hardcodes a category-root name"). This test is what confirms those seams are load-bearing, not decorative — it targets the shipped path directly, not a hypothetical compiler.
+
+### Status
+
+Not yet run. This is breadth-testing (does the *same* reference tooling correctly serve two divergent operators) alongside the depth-testing the existing v1.0 conformance matrix already covers (§System architecture's D6: does the *one* reference vault run correctly on Docker/Windows/Linux hosts). Both are required before the "operating system, not a personal script collection" claim holds — depth alone would still permit a reference implementation quietly hardcoded to one operator's shape.
+
+### Out of scope (post-v1.0)
+
+- A dedicated spec-compiler or templating engine (chezmoi or otherwise) — the shipped bootstrap + two-stage onboarding is the reference mechanism this test targets; a compiler is only future work if manual Stage 2 effort proves to be the actual bottleneck, which this test has not yet established
+- Runtime spec hot-swapping (the original exploration's further-out "stage 3") — out of scope until this test (its "stage 2" equivalent) has passed even once
+- A public gallery of alternate operator specs — one worked second example (Vault B above) is sufficient to prove the abstraction; a gallery is distribution/marketing surface, not a conformance requirement
