@@ -140,7 +140,7 @@ _Stage-2 onboarding (an agent-guided pass) should replace this with prose specif
 
   Say "scaffold complete: $($dirs.Count) folders, orientation file ($AgentTarget), starter GLOSSARY/HOME/session-log"
   Say "loop layer shipped INERT: edit _meta/loops/wrap-tail-repair.yaml.example, rename to .yaml, to activate"
-  Say "STAGE 2 NOT RUN: this container provides no agent. Point an agent harness at $VaultRoot and have it work through _meta/templates/onboarding-stage2.prompt.md to refine the glossary and orientation-file prose."
+  Say "STAGE 2 NOT RUN: this container provides no agent. Point an agent harness at $VaultRoot and have it work through _meta/templates/stage-2-onboarding.prompt.md to refine the glossary and orientation-file prose."
 } else {
   Say "existing vault detected at $VaultRoot (session-log.md present) — skipping scaffold, only installing the crontab"
 }
