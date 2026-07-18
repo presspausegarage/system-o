@@ -21,9 +21,10 @@
   --text-3:     #5e6884;   /* tertiary, metadata, muted mono                */
 
   /* ── Accents (semantic) ───────────────────────────────────────────────── */
-  --accent:       #3da88e; /* muted teal — success, selection, primary CTA  */
-  --accent-soft:  rgba(61, 168, 142, 0.14);
-  --accent-hover: #4ebda0;
+  --accent:        #00c8a0; /* teal — success, selection, primary CTA. Ratified 2026-07-11 (was #3da88e; 9.0:1 AAA vs 6.6:1 AA on --bg) */
+  --accent-soft:   rgba(0, 200, 160, 0.14);
+  --accent-border: rgba(0, 200, 160, 0.25);
+  --accent-hover:  #00b794; /* darken-on-hover, per this file's own rule */
   --blue:         #5c86d6; /* info, edit affordance, focused field          */
   --blue-soft:    rgba(92, 134, 214, 0.14);
   --amber:        #d88a3a; /* warnings, lint hits, dirty/edited state       */
