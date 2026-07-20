@@ -1,6 +1,7 @@
 name: site-ci
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'dist/**'
