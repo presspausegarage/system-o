@@ -101,7 +101,7 @@
     color: var(--text);
     white-space: nowrap;
   }
-  /* the oo of loop: two custody rings — machine teal, operator amber */
+  /* the oo of loop: two custody rings - machine teal, operator amber */
   h1 .ro {
     display: inline-block;
     width: .58em; height: .58em;
@@ -396,14 +396,14 @@
       <title id="dialtitle">The darkloop dial</title>
       <desc id="dialdesc">Four concentric rings sized by log of cadence: Cell (per finding), Day (24 hours, split into a night arc for the chain and a day arc for the session), Synthesis (weekly), Retention (month to year). A hand sweeps the current time; dawn and dusk sit where the day ring changes color.</desc>
 
-      <!-- Ring 3: Retention 235–300 -->
+      <!-- Ring 3: Retention 235-300 -->
       <g class="boot b3">
         <circle r="300" class="band-ret"/>
         <circle r="300" class="ring"/>
         <circle r="290" class="driftring"/>
         <circle id="retprog" class="prog" r="267.5"/>
       </g>
-      <!-- Ring 2: Synthesis 200–235 -->
+      <!-- Ring 2: Synthesis 200-235 -->
       <g class="boot b2">
         <circle r="235" fill="var(--bg)"/>
         <circle r="235" class="band-syn"/>
@@ -411,7 +411,7 @@
         <circle id="synprog" class="prog" r="217.5"/>
       </g>
 
-      <!-- Ring 1: Day 75–200 · contract times: dusk 23:40, dawn 06:12 (asymmetric arcs) -->
+      <!-- Ring 1: Day 75-200 · contract times: dusk 23:40, dawn 06:12 (asymmetric arcs) -->
       <g class="boot b1">
         <path id="nightArc" d="M -17.4 -199.2 A 200 200 0 0 1 199.7 10.5 L 74.9 3.9 A 75 75 0 0 0 -6.5 -74.7 Z" class="band-night"/>
         <path id="dayArc"  d="M 199.7 10.5 A 200 200 0 1 1 -17.4 -199.2 L -6.5 -74.7 A 75 75 0 1 0 74.9 3.9 Z" class="band-day"/>
@@ -420,7 +420,7 @@
         <circle r="200" class="ring"/>
       </g>
 
-      <!-- Ring 0: Cell 0–75 -->
+      <!-- Ring 0: Cell 0-75 -->
       <g class="boot b0">
         <circle r="75" fill="var(--bg)"/>
         <circle r="75" class="band-cell"/>
@@ -429,7 +429,7 @@
       </g>
 
       <g class="boot b4">
-        <!-- chain event blips (02:00–03:30, night arc) drawn by JS -->
+        <!-- chain event blips (02:00-03:30, night arc) drawn by JS -->
         <g id="blips"></g>
 
         <!-- comet tail + sweep hand -->
@@ -565,7 +565,7 @@
 
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ---- chain events: the reference nightly chain, 02:00–03:30 ---- */
+  /* ---- chain events: the reference nightly chain, 02:00-03:30 ---- */
   var CHAIN = [
     { t: 2.0,          name: 'triage',  msg: 'triage - inbox routed' },
     { t: 2.25,         name: 'purge',   msg: 'purge - sewerpipe 30d window swept' },
@@ -680,7 +680,7 @@
     if (crossed(prev, simH, DAWN)) {
       log('DAWN - surfacing bundle ready · custody → operator', true, DAWN);
     }
-    /* dusk sits at 23:40 — a wrapped step lands with prev shifted by -24 */
+    /* dusk sits at 23:40 - a wrapped step lands with prev shifted by -24 */
     if (crossed(prev, simH, DUSK) || crossed(prev, simH, DUSK - 24)) {
       log('DUSK - wrap tail committed · custody → chain', true, DUSK);
     }
