@@ -3,8 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>darkloop — system-o</title>
+<title>darkloop - system-o</title>
 <meta name="description" content="The darkloop: system-o's unattended operating cycle. Four rings, log-scaled by cadence. The operator is time-shifted, never removed." />
+<meta property="og:title" content="darkloop - system-o" />
+<meta property="og:description" content="The unattended operating cycle. Four rings, two crossings. You are time-shifted, never removed." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://system-o.org/darkloop" />
+<meta name="theme-color" content="#0b0e18" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -59,6 +64,10 @@
     animation: sweep 9s linear infinite;
   }
   @keyframes sweep { 0% { top: -140px; } 100% { top: 100vh; } }
+  .vignette {
+    pointer-events: none; position: fixed; inset: 0; z-index: 38;
+    background: radial-gradient(ellipse at 50% 40%, transparent 55%, rgba(0,0,0,0.4) 100%);
+  }
 
   /* ---------- top bar ---------- */
   header {
@@ -77,23 +86,34 @@
   /* ---------- hero ---------- */
   .hero {
     display: grid;
-    grid-template-columns: minmax(300px, 430px) minmax(340px, 1fr);
-    gap: 24px;
-    max-width: 1180px; margin: 0 auto;
-    padding: 56px 24px 24px;
+    grid-template-columns: minmax(280px, 390px) minmax(360px, 1.35fr);
+    gap: 28px;
+    max-width: 1220px; margin: 0 auto;
+    padding: 48px 24px 20px;
     align-items: center;
   }
   @media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
 
   h1 {
     font-family: var(--mono); font-weight: 800;
-    font-size: clamp(44px, 7vw, 78px);
+    font-size: clamp(42px, 6.4vw, 72px);
     letter-spacing: -0.03em; line-height: 1;
     color: var(--text);
+    white-space: nowrap;
   }
+  /* the oo of loop: two custody rings — machine teal, operator amber */
+  h1 .ro {
+    display: inline-block;
+    width: .58em; height: .58em;
+    border-radius: 50%;
+    border: .085em solid var(--accent);
+    vertical-align: 0.015em;
+    margin: 0 .015em;
+  }
+  h1 .ro.op { border-color: var(--amber); }
   h1 .caret {
-    display: inline-block; width: .55em; height: .9em;
-    background: var(--accent); margin-left: 6px; vertical-align: -0.08em;
+    display: inline-block; width: .5em; height: .88em;
+    background: var(--accent); margin-left: 5px; vertical-align: -0.08em;
     animation: blink 1.1s steps(1) infinite;
   }
   @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
@@ -114,14 +134,18 @@
   }
   .hud .clock {
     border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--bg-2); padding: 10px 16px; min-width: 128px;
+    background: linear-gradient(180deg, #192138, #131a2d);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 20px rgba(0,0,0,0.35);
+    padding: 10px 16px; min-width: 128px;
   }
   .hud .clock .t { font-size: 30px; font-weight: 700; letter-spacing: .02em; color: var(--text); font-variant-numeric: tabular-nums; }
   .hud .clock .d { font-size: 11px; color: var(--text-3); }
   .custody {
     display: flex; flex-direction: column; justify-content: center; gap: 4px;
     border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--bg-2); padding: 10px 16px;
+    background: linear-gradient(180deg, #192138, #131a2d);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 20px rgba(0,0,0,0.35);
+    padding: 10px 16px;
   }
   .custody .k { font-size: 10px; letter-spacing: .14em; color: var(--text-3); }
   .custody .v { font-size: 13px; font-weight: 700; }
@@ -139,14 +163,31 @@
   .speed button:hover { border-color: var(--accent); color: var(--accent); }
   .speed button[aria-pressed="true"] { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 700; }
 
-  /* event log */
+  /* event log: bordered CRT pane */
   .log {
     margin-top: 20px; font-size: 11.5px; line-height: 1.75;
-    color: var(--text-3); min-height: 128px;
+    color: var(--text-3); min-height: 152px;
+    background: #0a0d18; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 14px; position: relative; overflow: hidden;
+    box-shadow: inset 0 0 24px rgba(0,200,160,0.05);
+  }
+  .log::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.16) 2px 4px);
   }
   .log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .log div:last-child { color: var(--accent); }
+  .log div:last-child::after { content: '▮'; margin-left: 6px; animation: blink 1.1s steps(1) infinite; }
   .log .amberline:last-child { color: var(--amber); }
+
+  /* custody chip square status dot (never color-only: label carries the state) */
+  .custody .v::before {
+    content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 8px;
+  }
+  .custody.machine .v::before { background: var(--accent); }
+  .custody.operator .v::before { background: var(--amber); }
+
+  :focus-visible { outline: 2px solid #5c86d6; outline-offset: 3px; }
 
   /* ---------- the dial ---------- */
   .dialwrap { position: relative; }
@@ -155,9 +196,35 @@
   .ring       { fill: none; stroke: var(--border); stroke-width: 1.4; }
   .band-ret   { fill: rgba(0,200,160,0.035); }
   .band-syn   { fill: rgba(0,200,160,0.065); }
-  .band-night { fill: rgba(0,200,160,0.11); }
-  .band-day   { fill: rgba(245,166,35,0.10); }
+  .band-night { fill: rgba(0,200,160,0.11);  transition: fill-opacity 1.2s, filter 1.2s; }
+  .band-day   { fill: rgba(245,166,35,0.10); transition: fill-opacity 1.2s, filter 1.2s; }
   .band-cell  { fill: rgba(0,200,160,0.08); }
+
+  /* live custody lighting: the arc that holds custody is lit, the other sleeps */
+  .band-night, .band-day { transition: fill 1.2s, fill-opacity 1.2s, filter 1.2s; }
+  .band-night.holds { fill: rgba(0,200,160,0.20);  filter: drop-shadow(0 0 14px rgba(0,200,160,0.28)); }
+  .band-day.holds   { fill: rgba(245,166,35,0.19); filter: drop-shadow(0 0 14px rgba(245,166,35,0.24)); }
+  .band-night.rests { fill-opacity: .38; }
+  .band-day.rests   { fill-opacity: .38; }
+
+  /* the 02:00-03:30 chain window: its own glowing segment (phosphor) */
+  .band-chainwin { fill: rgba(0,200,160,0.30); filter: drop-shadow(0 0 10px rgba(0,200,160,0.45)); }
+
+  /* retention drift: dashed ring turning imperceptibly */
+  .driftring {
+    fill: none; stroke: var(--accent); stroke-opacity: .10;
+    stroke-width: 1.2; stroke-dasharray: 2 10;
+    transform-origin: 0 0; animation: spin 240s linear infinite;
+  }
+
+  /* slow-ring progress: the week filling toward synthesis, the 30d purge window closing */
+  .prog { fill: none; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 0 0; }
+  #synprog { stroke: var(--accent); stroke-opacity: .40; stroke-width: 3; }
+  #retprog { stroke: var(--accent); stroke-opacity: .22; stroke-width: 3; }
+
+  /* comet tail behind the hand */
+  #comet  { fill: none; stroke: var(--text); stroke-opacity: .14; stroke-width: 7; stroke-linecap: round; }
+  #comet2 { fill: none; stroke: var(--text); stroke-opacity: .30; stroke-width: 3; stroke-linecap: round; }
 
   .cellspin {
     fill: none; stroke: var(--accent); stroke-opacity: .5;
@@ -165,7 +232,18 @@
     transform-origin: 0 0;
     animation: spin 14s linear infinite;
   }
+  .cellspin.rush { animation-duration: 2.5s; stroke-opacity: .9; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* boot sequence: rings come online outward, then labels, then the hand */
+  .boot { opacity: 0; transform-origin: 0 0; animation: ringboot .7s cubic-bezier(.2,.7,.3,1) forwards; }
+  .b0 { animation-delay: .15s; } .b1 { animation-delay: .38s; }
+  .b2 { animation-delay: .61s; } .b3 { animation-delay: .84s; }
+  .b4 { animation-delay: 1.15s; }
+  @keyframes ringboot {
+    from { opacity: 0; transform: scale(.93); }
+    to   { opacity: 1; transform: scale(1); }
+  }
 
   .lbl   { font-family: var(--mono); font-size: 13px; font-weight: 700; fill: var(--text); }
   .sub   { font-family: var(--mono); font-size: 9.5px; fill: var(--text-3); }
@@ -205,17 +283,25 @@
   }
   h2::before { content: '§ '; color: var(--text-3); }
 
-  .contrast { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  @media (max-width: 760px) { .contrast { grid-template-columns: 1fr; } }
-  .contrast .box {
+  /* dark factory vs darkloop, rendered as a diff */
+  .diff {
     border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--bg-2); padding: 22px;
+    background: var(--bg-2); overflow: hidden; font-size: 13px;
   }
-  .contrast .box.them { opacity: .7; }
-  .contrast .k { font-size: 11px; letter-spacing: .14em; color: var(--text-3); margin-bottom: 8px; }
-  .contrast .box.us .k { color: var(--accent); }
-  .contrast p { font-family: var(--sans); font-size: 14.5px; color: var(--text-2); }
-  .contrast p b { color: var(--text); }
+  .diff .head {
+    padding: 9px 16px; border-bottom: 1px solid var(--border);
+    color: var(--text-3); font-size: 11.5px; background: var(--surface);
+  }
+  .diff .ln { display: flex; gap: 12px; padding: 5px 16px; line-height: 1.55; }
+  .diff .ln .g { flex: 0 0 10px; font-weight: 700; }
+  .diff .ln.del { background: rgba(239,68,68,0.06); }
+  .diff .ln.del .g { color: var(--red, #ef4444); }
+  .diff .ln.del .c { color: var(--text-3); }
+  .diff .ln.add { background: rgba(0,200,160,0.06); }
+  .diff .ln.add .g { color: var(--accent); }
+  .diff .ln.add .c { color: var(--text-2); }
+  .diff .ln.add .c b { color: var(--text); font-weight: 700; }
+  .diff .gap { height: 8px; }
 
   .props { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
   @media (max-width: 860px) { .props { grid-template-columns: 1fr; } }
@@ -247,6 +333,8 @@
     border: 1px solid var(--border); border-left: 3px solid var(--amber);
     border-radius: var(--radius); background: var(--bg-2); padding: 22px;
   }
+  .cross .box.todark { border-left-color: var(--accent); }
+  .cross .box.todark h3 { color: var(--accent); }
   .cross h3 { font-size: 15px; color: var(--amber); margin-bottom: 4px; }
   .cross .dir { font-size: 11px; color: var(--text-3); margin-bottom: 10px; }
   .cross p { font-family: var(--sans); font-size: 13.5px; color: var(--text-2); }
@@ -261,7 +349,8 @@
   footer a:hover { color: var(--accent); }
 
   @media (prefers-reduced-motion: reduce) {
-    .cellspin, .glowline, h1 .caret { animation: none; }
+    .cellspin, .glowline, h1 .caret, .driftring, .log div:last-child::after { animation: none; }
+    .boot { animation: none; opacity: 1; }
   }
 </style>
 </head>
@@ -269,6 +358,7 @@
 
 <div class="scan" aria-hidden="true"></div>
 <div class="glowline" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
 
 <header>
   <span class="path">system-o://<b>darkloop</b></span>
@@ -277,18 +367,18 @@
 
 <div class="hero">
   <div>
-    <h1>darkloop<span class="caret" aria-hidden="true"></span></h1>
-    <p class="tagline">The unattended operating cycle of a conforming vault. The chain, the loops, and the heartbeats maintain the system while you're away — <b>you are time-shifted, never removed.</b></p>
-    <p class="coin">Not a <em>dark factory</em>. Nothing ships without you; evidence waits at dawn. Silence is a detectable failure, never an acceptable state.</p>
+    <h1 aria-label="darkloop"><span aria-hidden="true">darkl<span class="ro"></span><span class="ro op"></span>p<span class="caret"></span></span></h1>
+    <p class="tagline">the unattended operating cycle of a conforming vault. the chain, the loops, and the heartbeats maintain the system while you're away - <b>you are time-shifted, never removed.</b></p>
+    <p class="coin">not a <em>dark factory</em>. nothing ships without you; evidence waits at dawn. silence is a detectable failure, never an acceptable state.</p>
 
     <div class="hud">
       <div class="clock">
-        <div class="t" id="clock">17:40</div>
+        <div class="t" id="clock">23:12</div>
         <div class="d" id="daylbl">day 000 · MON</div>
       </div>
       <div class="custody operator" id="custody">
         <span class="k">CUSTODY</span>
-        <span class="v" id="custodyv">OPERATOR ☀</span>
+        <span class="v" id="custodyv">OPERATOR</span>
       </div>
     </div>
     <div class="speed" role="group" aria-label="simulation speed">
@@ -307,53 +397,71 @@
       <desc id="dialdesc">Four concentric rings sized by log of cadence: Cell (per finding), Day (24 hours, split into a night arc for the chain and a day arc for the session), Synthesis (weekly), Retention (month to year). A hand sweeps the current time; dawn and dusk sit where the day ring changes color.</desc>
 
       <!-- Ring 3: Retention 235–300 -->
-      <circle r="300" class="band-ret"/>
-      <circle r="300" class="ring"/>
+      <g class="boot b3">
+        <circle r="300" class="band-ret"/>
+        <circle r="300" class="ring"/>
+        <circle r="290" class="driftring"/>
+        <circle id="retprog" class="prog" r="267.5"/>
+      </g>
       <!-- Ring 2: Synthesis 200–235 -->
-      <circle r="235" fill="var(--bg)"/>
-      <circle r="235" class="band-syn"/>
-      <circle r="235" class="ring" id="synring"/>
-
-      <!-- Ring 1: Day 75–200 · night arc dusk→top→dawn, day arc dawn→bottom→dusk -->
-      <path d="M -200 0 A 200 200 0 0 1 200 0 L 75 0 A 75 75 0 0 0 -75 0 Z" class="band-night"/>
-      <path d="M  200 0 A 200 200 0 0 1 -200 0 L -75 0 A 75 75 0 0 0 75 0 Z" class="band-day"/>
-      <circle r="200" class="ring"/>
-
-      <!-- Ring 0: Cell 0–75 -->
-      <circle r="75" fill="var(--bg)"/>
-      <circle r="75" class="band-cell"/>
-      <circle r="75" class="ring"/>
-      <circle r="64" class="cellspin"/>
-
-      <!-- chain event blips (02:00–03:30, night arc) drawn by JS -->
-      <g id="blips"></g>
-
-      <!-- sweep hand -->
-      <g id="handg">
-        <line id="hand" x1="0" y1="-78" x2="0" y2="-206"/>
-        <circle id="handdot" r="3.4" cy="-206"/>
+      <g class="boot b2">
+        <circle r="235" fill="var(--bg)"/>
+        <circle r="235" class="band-syn"/>
+        <circle r="235" class="ring" id="synring"/>
+        <circle id="synprog" class="prog" r="217.5"/>
       </g>
 
-      <!-- crossings: seams of the day ring -->
-      <circle cx="200"  cy="0" r="6.5" class="seam"/>
-      <circle cx="-200" cy="0" r="6.5" class="seam"/>
-      <text x="212"  y="-6" class="seamlbl">dawn</text>
-      <text x="212"  y="9"  class="sub">report surfaces</text>
-      <text x="-212" y="-6" class="seamlbl" text-anchor="end">dusk</text>
-      <text x="-212" y="9"  class="sub" text-anchor="end">wrap tail</text>
+      <!-- Ring 1: Day 75–200 · contract times: dusk 23:40, dawn 06:12 (asymmetric arcs) -->
+      <g class="boot b1">
+        <path id="nightArc" d="M -17.4 -199.2 A 200 200 0 0 1 199.7 10.5 L 74.9 3.9 A 75 75 0 0 0 -6.5 -74.7 Z" class="band-night"/>
+        <path id="dayArc"  d="M 199.7 10.5 A 200 200 0 1 1 -17.4 -199.2 L -6.5 -74.7 A 75 75 0 1 0 74.9 3.9 Z" class="band-day"/>
+        <!-- chain window 02:00-03:30, its own glowing segment inside the dark arc -->
+        <path id="chainwin" d="M 100 -173.2 A 200 200 0 0 1 158.7 -121.8 L 59.5 -45.7 A 75 75 0 0 0 37.5 -65 Z" class="band-chainwin"/>
+        <circle r="200" class="ring"/>
+      </g>
 
-      <!-- labels -->
-      <text x="0" y="-8" text-anchor="middle" class="lbl">Cell</text>
+      <!-- Ring 0: Cell 0–75 -->
+      <g class="boot b0">
+        <circle r="75" fill="var(--bg)"/>
+        <circle r="75" class="band-cell"/>
+        <circle r="75" class="ring"/>
+        <circle r="64" class="cellspin" id="cellspin"/>
+      </g>
+
+      <g class="boot b4">
+        <!-- chain event blips (02:00–03:30, night arc) drawn by JS -->
+        <g id="blips"></g>
+
+        <!-- comet tail + sweep hand -->
+        <path id="comet"/>
+        <path id="comet2"/>
+        <g id="handg">
+          <line id="hand" x1="0" y1="-78" x2="0" y2="-206"/>
+          <circle id="handdot" r="3.4" cy="-206"/>
+        </g>
+
+        <!-- crossings: seams of the day ring (dawn 06:12 right, dusk 23:40 upper-left) -->
+        <circle cx="199.7" cy="10.5"   r="6.5" class="seam"/>
+        <circle cx="-17.4" cy="-199.2" r="6.5" class="seam"/>
+        <text x="212"  y="8"  class="seamlbl">dawn 06:12</text>
+        <text x="212"  y="23" class="sub">report surfaces</text>
+        <line x1="-26" y1="-204" x2="-128" y2="-236" stroke="var(--border-2)" stroke-width="1"/>
+        <text x="-134" y="-240" class="seamlbl" text-anchor="end">dusk 23:40</text>
+        <text x="-134" y="-226" class="sub" text-anchor="end">wrap tail</text>
+      </g>
+
+      <!-- labels: chain centered in the night span (~44°), session opposite (~224°) -->
+      <text x="0" y="-8" text-anchor="middle" class="lbl">CELL</text>
       <text x="0" y="8"  text-anchor="middle" class="sub">detect · propose</text>
       <text x="0" y="20" text-anchor="middle" class="sub">verify · apply</text>
 
-      <text x="0" y="-141" text-anchor="middle" class="lbl on-night">Chain</text>
-      <text x="0" y="-126" text-anchor="middle" class="sub on-night">gates · loops · report</text>
-      <text x="0" y="134"  text-anchor="middle" class="lbl on-day">Session</text>
-      <text x="0" y="150"  text-anchor="middle" class="sub on-day">resume → work → wrap</text>
+      <text x="95" y="-96" text-anchor="middle" class="lbl on-night">CHAIN</text>
+      <text x="95" y="-81" text-anchor="middle" class="sub on-night">gates · loops · report</text>
+      <text x="-95" y="100" text-anchor="middle" class="lbl on-day">SESSION</text>
+      <text x="-95" y="116" text-anchor="middle" class="sub on-day">resume → work → wrap</text>
 
-      <text x="0" y="-213" text-anchor="middle" class="lbl" font-size="11.5">Synthesis</text>
-      <text x="0" y="-262" text-anchor="middle" class="lbl">Retention</text>
+      <text x="0" y="-213" text-anchor="middle" class="lbl" font-size="11.5">SYNTHESIS</text>
+      <text x="0" y="-262" text-anchor="middle" class="lbl">RETENTION</text>
       <text x="0" y="-277" text-anchor="middle" class="sub">sweep · purge · archive</text>
 
       <!-- cadence axis (log10), bottom radius -->
@@ -379,15 +487,14 @@
 
 <section>
   <h2>Not a dark factory</h2>
-  <div class="contrast">
-    <div class="box them">
-      <div class="k">DARK FACTORY</div>
-      <p>Lights-out production. Agents plan, write, review, and <b>ship without a human touching the loop</b>. The operator is removed. Silence means it's working — you hope.</p>
-    </div>
-    <div class="box us">
-      <div class="k">DARKLOOP</div>
-      <p>Lights-out <b>maintenance</b>. The chain runs while you sleep, but every revolution terminates in evidence you read at dawn. The operator is <b>time-shifted, never removed</b> — and silence is a detectable failure.</p>
-    </div>
+  <div class="diff">
+    <div class="head">$ diff dark_factory darkloop</div>
+    <div class="ln del"><span class="g">-</span><span class="c">lights-out production: agents plan, write, review, ship - no human touches the loop.</span></div>
+    <div class="ln del"><span class="g">-</span><span class="c">the operator is removed. silence means it's working - you hope.</span></div>
+    <div class="gap"></div>
+    <div class="ln add"><span class="g">+</span><span class="c">lights-out <b>maintenance</b>: the chain runs while you sleep; <b>every revolution terminates in evidence</b>.</span></div>
+    <div class="ln add"><span class="g">+</span><span class="c">the operator is <b>time-shifted, never removed</b> - you re-enter at dawn by reading, not by trusting.</span></div>
+    <div class="ln add"><span class="g">+</span><span class="c">silence is a <b>detectable failure</b> - a missing heartbeat is itself a finding.</span></div>
   </div>
 </section>
 
@@ -397,16 +504,16 @@
   <h2>Three properties</h2>
   <div class="props">
     <div class="prop" data-n="1">
-      <h3>Closed over the vault</h3>
-      <p>Reads vault state, writes vault state — within declared scopes, through declared gates. No side channel is load-bearing.</p>
+      <h3>CLOSED OVER THE VAULT</h3>
+      <p>reads vault state, writes vault state - within declared scopes, through declared gates. no side channel is load-bearing.</p>
     </div>
     <div class="prop" data-n="2">
-      <h3>Time-shifted, not removed</h3>
-      <p>Every revolution ends in surfacing: report + review queue. Unreviewed LLM output waits for you unless an endpoint has earned auto-apply.</p>
+      <h3>TIME-SHIFTED, NOT REMOVED</h3>
+      <p>every revolution ends in surfacing: report + review queue. unreviewed LLM output waits for you unless an endpoint has earned auto-apply.</p>
     </div>
     <div class="prop" data-n="3">
-      <h3>Silence is detectable</h3>
-      <p>Heartbeats make "didn't run" distinguishable from "ran clean." A missing heartbeat is itself a surfaced finding.</p>
+      <h3>SILENCE IS DETECTABLE</h3>
+      <p>heartbeats make "didn't run" distinguishable from "ran clean." a missing heartbeat is itself a surfaced finding.</p>
     </div>
   </div>
 </section>
@@ -419,10 +526,10 @@
   <table>
     <thead><tr><th>#</th><th>Ring</th><th>Cadence</th><th>One revolution</th></tr></thead>
     <tbody>
-      <tr><td class="rn">0</td><td class="nm">Cell</td><td class="cd">sec–min · per finding</td><td class="rv">detect → propose → verify → apply. The atomic unit; the only ring that touches an LLM.</td></tr>
-      <tr><td class="rn">1</td><td class="nm">Day <span class="op">⁄ split</span></td><td class="cd">~24 h</td><td class="rv">Dark arc: the chain — gates, loop runners, heartbeats, report build. Light arc: your session — resume, work, wrap tail. Same timescale, alternating custody.</td></tr>
-      <tr><td class="rn">2</td><td class="nm">Synthesis</td><td class="cd">weekly</td><td class="rv">Rolls ~7 Day revolutions into a strategic review. Note the thin band — a week is only ×7 a day; the log scale doesn't lie.</td></tr>
-      <tr><td class="rn">3</td><td class="nm">Retention</td><td class="cd">days → qtr/yr</td><td class="rv">Sweep, purge, archive — the slowest state machines. Forgetting, on a schedule.</td></tr>
+      <tr><td class="rn">0</td><td class="nm">CELL</td><td class="cd">sec-min · per finding</td><td class="rv">detect → propose → verify → apply. the atomic unit; the only ring that touches an LLM.</td></tr>
+      <tr><td class="rn">1</td><td class="nm">DAY <span class="op">⁄ SPLIT</span></td><td class="cd">~24 h</td><td class="rv">dark arc: the chain - gates, loop runners, heartbeats, report build. light arc: your session - resume, work, wrap tail. same timescale, alternating custody.</td></tr>
+      <tr><td class="rn">2</td><td class="nm">SYNTHESIS</td><td class="cd">weekly</td><td class="rv">rolls ~7 day revolutions into a strategic review. note the thin band - a week is only ×7 a day; the log scale doesn't lie.</td></tr>
+      <tr><td class="rn">3</td><td class="nm">RETENTION</td><td class="cd">days → qtr/yr</td><td class="rv">sweep, purge, archive - the slowest state machines. forgetting, on a schedule.</td></tr>
     </tbody>
   </table>
   </div>
@@ -434,20 +541,21 @@
   <h2>Two crossings</h2>
   <div class="cross">
     <div class="box">
-      <h3>☀ dawn</h3>
-      <div class="dir">dark → light</div>
-      <p>The surfacing bundle: built report, review queue, heartbeat summary. <b>You re-enter by reading evidence, not by trusting silence.</b></p>
+      <h3>DAWN</h3>
+      <div class="dir">dark → light · 06:12</div>
+      <p>the surfacing bundle: built report, review queue, heartbeat summary. <b>you re-enter by reading evidence, not by trusting silence.</b></p>
     </div>
-    <div class="box">
-      <h3>☾ dusk</h3>
-      <div class="dir">light → dark</div>
-      <p>The wrap tail: handoff + session log + dashboard bump. The chain audits this crossing — <b>an incomplete wrap is a finding, not a mystery.</b></p>
+    <div class="box todark">
+      <h3>DUSK</h3>
+      <div class="dir">light → dark · 23:40</div>
+      <p>the wrap tail: handoff + session log + dashboard bump. the chain audits this crossing - <b>an incomplete wrap is a finding, not a mystery.</b></p>
     </div>
   </div>
 </section>
 
 <footer>
-  spec §Darkloop · custody alternates only at crossings · every crossing is a vault artifact<br/><br/>
+  spec §darkloop · custody alternates only at crossings · every crossing is a vault artifact<br/>
+  <span style="color:var(--text-3)">darkloop is a system-o term of art · coined july 2026</span><br/><br/>
   <a href="/">← back to the terminal</a>
 </footer>
 
@@ -459,15 +567,15 @@
 
   /* ---- chain events: the reference nightly chain, 02:00–03:30 ---- */
   var CHAIN = [
-    { t: 2.0,          name: 'triage',  msg: 'triage — inbox routed' },
-    { t: 2.25,         name: 'purge',   msg: 'purge — sewerpipe 30d window swept' },
-    { t: 2.5,          name: 'backup',  msg: 'backup — vault mirrored' },
-    { t: 2.75,         name: 'radar',   msg: 'radar — link-health digest built' },
-    { t: 2.8333,       name: 'sweep',   msg: 'sweep — handoffs archived · wrap-tail guard ran' },
-    { t: 3.25,         name: 'push',    msg: 'push — phone context refreshed' },
-    { t: 3.5,          name: 'report',  msg: 'report — daily email built ✓' }
+    { t: 2.0,          name: 'triage',  msg: 'triage - inbox routed' },
+    { t: 2.25,         name: 'purge',   msg: 'purge - sewerpipe 30d window swept' },
+    { t: 2.5,          name: 'backup',  msg: 'backup - vault mirrored' },
+    { t: 2.75,         name: 'radar',   msg: 'radar - link-health digest built' },
+    { t: 2.8333,       name: 'sweep',   msg: 'sweep - handoffs archived · wrap-tail guard ran' },
+    { t: 3.25,         name: 'push',    msg: 'push - phone context refreshed' },
+    { t: 3.5,          name: 'report',  msg: 'report - daily email built ✓' }
   ];
-  var DAWN = 6, DUSK = 18;
+  var DAWN = 6.2, DUSK = 23.6667;   /* contract times: dawn 06:12, dusk 23:40 */
 
   /* ---- build blips on the night arc ---- */
   var blipsG = document.getElementById('blips');
@@ -494,7 +602,7 @@
   });
 
   /* ---- sim state ---- */
-  var simH = 17.65;          // start just before dusk
+  var simH = 23.2;           // start just before dusk (23:40)
   var day = 0;               // day counter; day 0 = MON
   var WD = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
   var mult = reduced ? 1 : 3600;
@@ -507,6 +615,25 @@
   var $handg = document.getElementById('handg');
   var $log = document.getElementById('log');
   var $syn = document.getElementById('synring');
+  var $nightA = document.getElementById('nightArc');
+  var $dayA = document.getElementById('dayArc');
+  var $cell = document.getElementById('cellspin');
+  var $comet = document.getElementById('comet');
+  var $comet2 = document.getElementById('comet2');
+  var $synprog = document.getElementById('synprog');
+  var $retprog = document.getElementById('retprog');
+
+  var C_SYN = 2 * Math.PI * 217.5, C_RET = 2 * Math.PI * 267.5;
+  $synprog.setAttribute('stroke-dasharray', C_SYN);
+  $retprog.setAttribute('stroke-dasharray', C_RET);
+
+  function pt(r, deg) {
+    var a = deg * Math.PI / 180;
+    return (r * Math.sin(a)).toFixed(1) + ' ' + (-r * Math.cos(a)).toFixed(1);
+  }
+  function tailArc(r, a0, a1) {
+    return 'M ' + pt(r, a0) + ' A ' + r + ' ' + r + ' 0 0 1 ' + pt(r, a1);
+  }
 
   var LOGMAX = 7;
   function log(msg, amber, atH) {
@@ -551,28 +678,41 @@
       if (crossed(prev, simH, e.t)) { fire(i); log(e.msg, false, e.t); }
     });
     if (crossed(prev, simH, DAWN)) {
-      log('☀ DAWN — surfacing bundle ready · custody → operator', true, DAWN);
+      log('DAWN - surfacing bundle ready · custody → operator', true, DAWN);
     }
-    if (crossed(prev, simH, DUSK)) {
-      log('☾ DUSK — wrap tail committed · custody → chain', true, DUSK);
+    /* dusk sits at 23:40 — a wrapped step lands with prev shifted by -24 */
+    if (crossed(prev, simH, DUSK) || crossed(prev, simH, DUSK - 24)) {
+      log('DUSK - wrap tail committed · custody → chain', true, DUSK);
     }
     if (day % 7 === 5 && crossed(prev, simH, 23)) {
-      log('synthesis — week-in-review built', false, 23);
+      log('synthesis - week-in-review built', false, 23);
       $syn.classList.add('fired');
       setTimeout(function () { $syn.classList.remove('fired'); }, 1800);
     }
     if (day > 0 && day % 30 === 0 && crossed(prev, simH, 2.3)) {
-      log('retention — 30d purge window closed');
+      log('retention - 30d purge window closed');
     }
 
     /* render */
     $clock.textContent = fmt(simH);
     $daylbl.textContent = 'day ' + pad3(day) + ' · ' + WD[day % 7];
-    $handg.setAttribute('transform', 'rotate(' + (simH * 15) + ')');
+    var deg = simH * 15;
+    $handg.setAttribute('transform', 'rotate(' + deg + ')');
+    $comet.setAttribute('d', tailArc(142, deg - 30, deg - 4));
+    $comet2.setAttribute('d', tailArc(142, deg - 16, deg - 2));
 
     var light = simH >= DAWN && simH < DUSK;
     $custody.className = 'custody ' + (light ? 'operator' : 'machine');
-    $custodyv.textContent = light ? 'OPERATOR ☀' : 'CHAIN ☾';
+    $custodyv.textContent = light ? 'OPERATOR' : 'CHAIN';
+
+    $nightA.classList.toggle('holds', !light);
+    $nightA.classList.toggle('rests', light);
+    $dayA.classList.toggle('holds', light);
+    $dayA.classList.toggle('rests', !light);
+    $cell.classList.toggle('rush', !light && simH >= 2 && simH < 3.5);
+
+    $synprog.setAttribute('stroke-dashoffset', C_SYN * (1 - ((day % 7) + simH / 24) / 7));
+    $retprog.setAttribute('stroke-dashoffset', C_RET * (1 - ((day % 30) + simH / 24) / 30));
   }
 
   function loop(now) {
@@ -601,7 +741,20 @@
     }
   } };
 
-  log('darkloop dial online · sim 1s = 1h');
+  if (reduced) {
+    log('darkloop dial online');
+  } else {
+    var BOOT = [
+      'ring-0 cell ······· online',
+      'ring-1 day ········ custody arcs live',
+      'ring-2 synthesis ·· armed',
+      'ring-3 retention ·· armed',
+      'darkloop dial online · sim 1s = 1h'
+    ];
+    BOOT.forEach(function (m, i) {
+      setTimeout(function () { log(m); }, 260 + i * 240);
+    });
+  }
   requestAnimationFrame(loop);
 })();
 </script>
