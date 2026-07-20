@@ -36,10 +36,13 @@ $fresh = -not (Test-Path $sessionLog)
 if ($fresh) {
   Say "fresh vault at $VaultRoot — scaffolding locked taxonomy"
 
-  # Locked folders (spec §File & folder taxonomy)
+  # Locked folders (spec §File & folder taxonomy; §Agent context bundle locks
+  # _meta/agent-context/ "by extension of §File & folder taxonomy's determinism
+  # guarantee" — not listed in the taxonomy table itself, easy to miss)
   $dirs = @(
     '_meta/registry', '_meta/handoffs', '_meta/loops/proposals', '_meta/extensions',
-    '_meta/scripts', '_meta/templates', '_meta/logs', '_inbox', '_sewerpipe', '_archive/handoffs'
+    '_meta/scripts', '_meta/templates', '_meta/logs', '_inbox', '_sewerpipe', '_archive/handoffs',
+    '_meta/agent-context'
   )
   foreach ($d in $dirs) {
     $p = Join-Path $VaultRoot $d
@@ -112,6 +115,25 @@ Populate this during onboarding (stage 2 — an agent-guided pass, or by hand): 
 "@ | Set-Content -Path $glossaryFile -Encoding UTF8
   }
 
+  # Starter agent-context MEMORY.md (spec §Agent context bundle — required,
+  # the index; empty is fine, absent is not).
+  $memoryFile = Join-Path $VaultRoot '_meta/agent-context/MEMORY.md'
+  if (-not (Test-Path $memoryFile)) {
+    @"
+---
+type: meta
+tags:
+  - type/meta
+  - topic/agent-context
+updated: $today
+---
+
+# Agent context index
+
+One line per topic file: a short label, a one-line summary, a link. Populate during onboarding or as an agent harness accumulates durable facts about this workspace (spec §Agent context bundle). Never holds the fact itself — this is the table of contents.
+"@ | Set-Content -Path $memoryFile -Encoding UTF8
+  }
+
   # Orientation file (spec §Agent orientation files) — the canonical file for
   # whichever agent is primary. Minimal starter; stage 2 refines the prose.
   $orientFile = Join-Path $VaultRoot $AgentTarget
@@ -138,7 +160,7 @@ _Stage-2 onboarding (an agent-guided pass) should replace this with prose specif
     Copy-Item -Path $exampleManifest -Destination (Join-Path $VaultRoot '_meta/loops/wrap-tail-repair.yaml.example') -Force
   }
 
-  Say "scaffold complete: $($dirs.Count) folders, orientation file ($AgentTarget), starter GLOSSARY/HOME/session-log"
+  Say "scaffold complete: $($dirs.Count) folders, orientation file ($AgentTarget), starter GLOSSARY/HOME/session-log/agent-context"
   Say "loop layer shipped INERT: edit _meta/loops/wrap-tail-repair.yaml.example, rename to .yaml, to activate"
   Say "STAGE 2 NOT RUN: this container provides no agent. Point an agent harness at $VaultRoot and have it work through _meta/templates/stage-2-onboarding.prompt.md to refine the glossary and orientation-file prose."
 } else {
