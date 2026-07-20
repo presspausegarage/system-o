@@ -11,11 +11,11 @@ Whose problem? Why now? What's the alternative if this doesn't exist?
 ## Defensibility screen
 *What can't a stranger's agent replicate in a weekend? Zero checks → bury without building.*
 
-- [ ] **Position** — needs a verified/licensed/KYC'd account or platform approval I hold
-- [ ] **Local** — needs physical presence / ground truth where I am
-- [ ] **Relationship** — needs a human who answers *my* calls or trusts *me* specifically
-- [ ] **History** — the backlog is the product; a copycat starting today is permanently behind
-- [ ] **Regulatory** — compliance friction deters the lazy but I'll cross it once
+- [ ] **Position** - needs a verified/licensed/KYC'd account or platform approval I hold
+- [ ] **Local** - needs physical presence / ground truth where I am
+- [ ] **Relationship** - needs a human who answers *my* calls or trusts *me* specifically
+- [ ] **History** - the backlog is the product; a copycat starting today is permanently behind
+- [ ] **Regulatory** - compliance friction deters the lazy but I'll cross it once
 
 Friction I'm relying on: ____
 Copycat-weekend risk after that friction: low / medium / high
