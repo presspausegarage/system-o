@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>system-o — Markdown OS</title>
+<title>system-o - Markdown OS</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -116,7 +116,7 @@ const BOOT_LINES = [
 // Poses are eyes+mouth pairs framed into the same 7-line box. The original
 // six are the click-toy cycle (cosmetic, random). thinking/sleep/error are
 // named, state-driven expressions the HUD pill (below) reflects live status
-// with — not part of the random click cycle.
+// with - not part of the random click cycle.
 function oBoyFrame(eyes, mouth) {
   return [
     '   ___   ',
@@ -212,7 +212,7 @@ function OBoy() {
 // Minimal always-on state: o-boy eyes + clock. Click expands into the full
 // face + a one-line audit summary. On system-o.org there's no vault behind
 // this static page, so the fetch below 404s and the HUD settles into
-// 'sleep' — that's the honest state for "no live data," distinct from
+// 'sleep' - that's the honest state for "no live data," distinct from
 // 'error' (the audit ran and found something) (_meta/Kanban.md, post-v1.0).
 function useClock() {
   const [now, setNow] = useState(() => new Date());
@@ -240,7 +240,7 @@ function HudPill() {
         setAudit({
           state: data.ok === false || flagged.length > 0 ? 'error' : 'ok',
           summary: data.ok === false || flagged.length > 0
-            ? `audit: ${flagged.length} flagged — ${flagged.map(c => c.name).join(', ')}`
+            ? `audit: ${flagged.length} flagged - ${flagged.map(c => c.name).join(', ')}`
             : `audit: ${Array.isArray(data.checks) ? data.checks.length : 0} checks clear`,
         });
       })
@@ -322,7 +322,7 @@ const COMMANDS = {
   ],
 
   about: () => [
-    <Line><Teal>system-o</Teal> <Dim2>— Markdown OS for AI-augmented operators</Dim2></Line>,
+    <Line><Teal>system-o</Teal> <Dim2>- Markdown OS for AI-augmented operators</Dim2></Line>,
     <Gap />,
     <Line>A portable vault spec + transform manifest that turns a plain</Line>,
     <Line>Markdown folder into a structured operating environment for humans and agents.</Line>,
@@ -330,16 +330,16 @@ const COMMANDS = {
     <Line><Dim2>Three layers:</Dim2></Line>,
     <Line>  <Blue>Spec</Blue>      <Dim2>layered architecture · darkloop · loop cells · agent orientation cascade</Dim2></Line>,
     <Line>           <Dim2>transform + loop manifests · file/folder taxonomy · extension surface</Dim2></Line>,
-    <Line>  <Amber>Reference</Amber> <Dim2>one concrete implementation that satisfies the spec —</Dim2></Line>,
+    <Line>  <Amber>Reference</Amber> <Dim2>one concrete implementation that satisfies the spec -</Dim2></Line>,
     <Line>           <Dim2>your choice of editor, scheduler, and agent host</Dim2></Line>,
-    <Line>  <Dim>Distrib.</Dim>  <Dim2>scaffolder / installer — post-v1.0</Dim2></Line>,
+    <Line>  <Dim>Distrib.</Dim>  <Dim2>scaffolder / installer - post-v1.0</Dim2></Line>,
     <Gap />,
     <Line><Dim2>Operating principle:</Dim2>  <T c="var(--text)">friction-free in, structured out.</T></Line>,
     <Line><Dim2>                     Gates are local-deterministic. LLM is participant, not policy-maker.</Dim2></Line>,
   ],
 
   spec: () => [
-    <Line><Teal>SPEC.md — 10 sections (v0.1 draft)</Teal></Line>,
+    <Line><Teal>SPEC.md - 10 sections (v0.1 draft)</Teal></Line>,
     <HR />,
     <Line><Dim2>1</Dim2>  <Blue>System architecture</Blue>      <Dim2>six-layer stack · the loop cell (detect→propose→verify→apply)</Dim2></Line>,
     <Line>                          <Dim2>apply modes · measured conformance · endpoint degradation</Dim2></Line>,
@@ -356,18 +356,18 @@ const COMMANDS = {
     <Line><Dim2>8</Dim2>  <Blue>Agent context bundle</Blue>      <Dim2>`_meta/agent-context/` schema · MEMORY.md + topic files · transform manifests</Dim2></Line>,
     <Line><Dim2>9</Dim2>  <Blue>Template manifest</Blue>        <Dim2>canonical `reference/templates/` set · every template cited by a consumer</Dim2></Line>,
     <Line><Dim2>10</Dim2> <Blue>Pluggability conformance test</Blue> <Dim2>two materially different specs, two materially different</Dim2></Line>,
-    <Line>                          <Dim2>conformant vaults — proves spec/reference-implementation is real</Dim2></Line>,
+    <Line>                          <Dim2>conformant vaults - proves spec/reference-implementation is real</Dim2></Line>,
     <Gap />,
-    <Line><Dim2>Target:</Dim2>  single SPEC.md · 600–800 lines · hard ceiling 1500</Line>,
+    <Line><Dim2>Target:</Dim2>  single SPEC.md · 600-800 lines · hard ceiling 1500</Line>,
     <Line><Dim2>V1.0 definition:</Dim2>  Docker primary (Windows + Linux host) + Windows-native reference · loop layer required, verified via stub endpoint driver</Line>,
   ],
 
   tree: () => [
-    <Line><Teal>Locked file &amp; folder taxonomy</Teal> <Dim2>— spec §File &amp; folder taxonomy</Dim2></Line>,
+    <Line><Teal>Locked file &amp; folder taxonomy</Teal> <Dim2>- spec §File &amp; folder taxonomy</Dim2></Line>,
     <HR />,
     <Line><Dim>.</Dim></Line>,
-    <Line><Dim>├── </Dim>CLAUDE.md <Dim2>or AGENTS.md — canonical orientation file (spec §Agent orientation files)</Dim2></Line>,
-    <Line><Dim>├── </Dim>_inbox/<Dim2>              capture pad — triage empties it</Dim2></Line>,
+    <Line><Dim>├── </Dim>CLAUDE.md <Dim2>or AGENTS.md - canonical orientation file (spec §Agent orientation files)</Dim2></Line>,
+    <Line><Dim>├── </Dim>_inbox/<Dim2>              capture pad - triage empties it</Dim2></Line>,
     <Line><Dim>├── </Dim>_sewerpipe/<Dim2>          retention window before hard delete</Dim2></Line>,
     <Line><Dim>└── </Dim>_meta/</Line>,
     <Line><Dim>    ├── </Dim>registry/<Dim2>          one card per project</Dim2></Line>,
@@ -382,17 +382,17 @@ const COMMANDS = {
     <Line><Dim>    ├── </Dim>agent-context/<Dim2>      operator memory + transform manifests (§Agent context bundle)</Dim2></Line>,
     <Line><Dim>    └── </Dim>logs/<Dim2>               chain + loop-runner run logs</Dim2></Line>,
     <Gap />,
-    <Line><Dim2>Not shown: adopter-named category roots (</Dim2>web/<Dim2>, </Dim2>apps/<Dim2>, </Dim2>games/<Dim2>, or any other split) —</Dim2></Line>,
+    <Line><Dim2>Not shown: adopter-named category roots (</Dim2>web/<Dim2>, </Dim2>apps/<Dim2>, </Dim2>games/<Dim2>, or any other split) -</Dim2></Line>,
     <Line><Dim2>discovered dynamically, never hardcoded by a reference script (§File &amp; folder taxonomy).</Dim2></Line>,
   ],
 
   iso: () => [
-    <Line><Teal>ISO 13485:2016 — quality alignment map</Teal></Line>,
+    <Line><Teal>ISO 13485:2016 - quality alignment map</Teal></Line>,
     <HR />,
     <Line><Dim2>system-o applies medical-device QMS discipline to AI development pipelines.</Dim2></Line>,
     <Line><Dim2>Gates are deterministic. Evidence is mandatory. Drift is auditable.</Dim2></Line>,
     <Gap />,
-    <Line><Dim2>§ 4.1  Quality management system — general</Dim2></Line>,
+    <Line><Dim2>§ 4.1  Quality management system - general</Dim2></Line>,
     <Line>  <T c="var(--accent)">→</T>  Vault spec is the documented QMS. Folder taxonomy + frontmatter rules = QMS procedures.</Line>,
     <Gap />,
     <Line><Dim2>§ 4.2  Documentation requirements</Dim2></Line>,
@@ -401,7 +401,7 @@ const COMMANDS = {
     <Gap />,
     <Line><Dim2>§ 7.1  Planning of product realization</Dim2></Line>,
     <Line>  <T c="var(--accent)">→</T>  Lifecycle state machines: launchpad → graduate / bury. Tombstones on every burial.</Line>,
-    <Line>  <T c="var(--accent)">→</T>  Risk classification (1–3) gate destructive ops. High-risk = PR-only, no direct commit.</Line>,
+    <Line>  <T c="var(--accent)">→</T>  Risk classification (1-3) gate destructive ops. High-risk = PR-only, no direct commit.</Line>,
     <Gap />,
     <Line><Dim2>§ 7.3  Design and development</Dim2></Line>,
     <Line>  <T c="var(--accent)">→</T>  Handoff → implementation → verification → complete. No flip without cited artifact.</Line>,
@@ -421,7 +421,7 @@ const COMMANDS = {
   ],
 
   install: () => [
-    <Line><Teal>Installation — capability requirements</Teal></Line>,
+    <Line><Teal>Installation - capability requirements</Teal></Line>,
     <HR />,
     <Line><Dim2>system-o adopters compose a stack that satisfies four capabilities.</Dim2></Line>,
     <Line><Dim2>The spec is the artifact; the reference is one example.</Dim2></Line>,
@@ -578,7 +578,7 @@ function Terminal() {
         background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px)',
       }} />
 
-      {/* HUD collapsed pill — o-boy eyes + clock, expands on click (_meta/Kanban.md) */}
+      {/* HUD collapsed pill - o-boy eyes + clock, expands on click (_meta/Kanban.md) */}
       <HudPill />
 
       {/* terminal body */}
