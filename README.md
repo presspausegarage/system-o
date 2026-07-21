@@ -44,7 +44,7 @@ Full walkthrough, signal handling, and what's deliberately not on by default: [`
 
 **v1.0 conformance: closed.** The install-and-run-clean gate (Docker from a Windows host, Docker from a Linux host, plus the Windows-native reference path; loop layer required, tested via a deterministic stub endpoint - no LLM dependency) is scripted end-to-end at [`reference/tests/run-conformance-test.ps1`](reference/tests/run-conformance-test.ps1) and passing on all three targets.
 
-Live showcase + spec walkthrough: [system-o.org](https://system-o.org).
+Live showcase + spec walkthrough: [system-o.org](https://system-o.org) (site source: [system-o.org repo](https://github.com/presspausegarage/system-o.org), split out from this repo so cloning the framework doesn't also pull in unrelated site/security-disclosure content).
 
 ## License
 

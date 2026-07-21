@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'dist/**'
       - 'spec/**'
       - 'README.md'
       - 'reference/**'
@@ -22,26 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 20
-
-      - name: parse landing page JSX
-        run: |
-          awk '/<script type="text\/babel">/{f=1;next} f&&/<\/script>/{f=0} f' dist/index.html > /tmp/landing.jsx
-          test -s /tmp/landing.jsx
-          npx --yes esbuild /tmp/landing.jsx --loader:.jsx=jsx --jsx=transform --outfile=/dev/null
-
-      - name: parse darkloop dial script
-        run: |
-          awk '/^<script>$/{f=1;next} f&&/^<\/script>$/{f=0} f' dist/darkloop.html > /tmp/dial.js
-          test -s /tmp/dial.js
-          npx --yes esbuild /tmp/dial.js --outfile=/dev/null
-
       - name: voice lint - no em/en dashes in shipped copy
         run: |
           set -e
-          FILES=$(git ls-files 'dist/*' 'dist/**' 'spec/*.md' 'README.md' 'reference/**' | grep -E '\.(html|md)$' || true)
+          FILES=$(git ls-files 'spec/*.md' 'README.md' 'reference/**' | grep -E '\.(html|md)$' || true)
           BAD=0
           for f in $FILES; do
             HITS=$(perl -CSD -ne 'print "$.: $_" if /[\x{2014}\x{2013}]/' "$f")
@@ -53,20 +36,3 @@ jobs:
             fi
           done
           exit $BAD
-
-  deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: checks
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      deployments: write
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: deploy dist/ to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=system-o --commit-dirty=true

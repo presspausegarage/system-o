@@ -1,7 +1,0 @@
-Contact: mailto:security@system-o.org
-Expires: 2027-04-30T00:00:00Z
-Encryption: https://system-o.org/.well-known/openpgpkey/security.asc
-Acknowledgments: https://system-o.org/security/acknowledgments.html
-Preferred-Languages: en
-Canonical: https://system-o.org/.well-known/security.txt
-Policy: https://system-o.org/security/policy.html
