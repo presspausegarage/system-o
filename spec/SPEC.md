@@ -1,6 +1,6 @@
-# system-o specification - v0.1 draft
+# system-o specification - v0.2 draft
 
-> **Status:** draft - 10 sections committed as drafted; remaining v1.0 sections in progress.
+> **Status:** draft - 10 sections committed as drafted; remaining v1.0 sections in progress. §Loop manifest carries an explicit reference-implementation status; §Pluggability conformance test has not yet run and is the stated v1.0 gate.
 > **Form:** single file; hard ceiling 1500 lines, target 600-800. Split into modules above ceiling.
 > **Scope:** portable spec layer only - no reference-implementation detail, no distribution mechanics.
 
@@ -384,6 +384,16 @@ Conformance requirements for any loop-runner implementation:
 - The propose call is the loop's only network/LLM operation
 - The verifier is pure: it writes nothing
 - The runner writes only inside `scope` (on apply) and to the loop's own artifacts (proposals, ledger, run log)
+
+### Reference implementation status
+
+The schema above is the portable contract. The shipped runner (`reference/scripts/run-loop.ps1`) implements it for the wrap-tail-repair reference cell, with an explicit generic/specific split:
+
+- **Generic, enforced from any manifest:** `scope` (checked by the runner before a proposal is written and re-checked by the applier), `budget` caps, endpoint chain order and degradation, per-endpoint `timeout_sec`, `apply` gating via `auto_apply_endpoints`, and detect-step read-onlyness (`-DryRun` is forced on)
+- **Wrap-tail-specific:** the findings adapter (it parses `detect-wrap-tail.ps1`'s dry-run contract line), the `structural` verifier, and the two repair types
+- The runner refuses a manifest declaring a verifier id it does not implement - it never treats unrecognized detector output as a clean pass
+
+A second, materially different loop therefore needs its manifest plus adapter/verifier/repair implementations at that seam; supplying a manifest alone is not yet sufficient. That gap is exactly what §Pluggability conformance test exists to close, and it is open until that test passes.
 
 ### Out of scope (post-v1.0)
 

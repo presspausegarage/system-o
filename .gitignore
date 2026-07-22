@@ -3,3 +3,11 @@
 Thumbs.db
 desktop.ini
 _meta/
+
+# Local Docker artifacts: the compose override an adopter copies from the
+# example, and any vault created inside the clone against the documented
+# advice (the vault belongs OUTSIDE the clone).
+reference/docker/docker-compose.yml
+reference/docker/docker-compose.override.yml
+reference/docker/my-vault/
+/my-vault/
