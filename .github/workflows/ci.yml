@@ -1,0 +1,61 @@
+name: ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  parse-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: PowerShell AST parse (all scripts)
+        shell: pwsh
+        run: |
+          $errs = 0
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            $tokens = $null; $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors) {
+              $errs++
+              Write-Host "::error file=$($_.FullName)::PowerShell parse errors"
+              $parseErrors | ForEach-Object { Write-Host $_.Message }
+            }
+          }
+          Write-Host "AST parse: $errs file(s) with errors"
+          if ($errs) { exit 1 }
+
+      - name: Portability lint (reference scripts)
+        shell: pwsh
+        run: pwsh -NoProfile -File reference/scripts/lint-portability.ps1 -Path reference/scripts
+
+  conformance-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        agent: [CLAUDE.md, AGENTS.md]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Native conformance (${{ matrix.os }}, ${{ matrix.agent }})
+        shell: pwsh
+        run: pwsh -NoProfile -File reference/tests/run-conformance-test.ps1 -Target native -AgentTarget ${{ matrix.agent }}
+
+  conformance-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Docker conformance (Linux host)
+        shell: pwsh
+        run: pwsh -NoProfile -File reference/tests/run-conformance-test.ps1 -Target docker

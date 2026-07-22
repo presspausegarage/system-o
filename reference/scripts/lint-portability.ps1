@@ -67,6 +67,9 @@ $targets = if ($Scripts.Count -gt 0) { $Scripts | ForEach-Object { Join-Path $Pa
 $findings = [System.Collections.Generic.List[object]]::new()
 foreach ($file in $targets) {
   if (-not (Test-Path $file)) { Write-Warning "not found: $file"; continue }
+  # Never lint this script itself: its rule definitions quote the very patterns
+  # it hunts, which read as findings when the lint directory includes it.
+  if ((Resolve-Path $file).Path -eq $PSCommandPath) { continue }
   $n = 0
   foreach ($line in (Get-Content -Path $file -Encoding UTF8)) {
     $n++
