@@ -10,8 +10,10 @@ FROM mcr.microsoft.com/powershell:7.4-debian-12
 # git: needed by detect-wrap-tail.ps1's commit-only-date scan.
 # cron: the in-container scheduler (dissolves per-OS scheduler registration —
 # distribution review D1/D3).
+# tzdata: so `TZ` (compose environment) actually shifts the container clock —
+# cron fires on container time, which is UTC unless you set TZ.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git cron ca-certificates \
+    && apt-get install -y --no-install-recommends git cron ca-certificates tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # Build context MUST be apps/system-o/ (the parent of both reference/ and
@@ -28,6 +30,7 @@ COPY reference/templates/   /opt/system-o/templates/
 COPY spec/wrap-tail-repair.example.yaml /opt/system-o/wrap-tail-repair.example.yaml
 COPY reference/docker/entrypoint.ps1  /opt/system-o/entrypoint.ps1
 COPY reference/docker/bootstrap.ps1   /opt/system-o/bootstrap.ps1
+COPY reference/docker/healthcheck.ps1 /opt/system-o/healthcheck.ps1
 COPY reference/docker/crontab.example /opt/system-o/crontab.example
 
 # Bind-mounted at runtime — see docker-compose.example.yml. Declaring the
@@ -35,5 +38,11 @@ COPY reference/docker/crontab.example /opt/system-o/crontab.example
 VOLUME ["/vault"]
 ENV VAULT_ROOT=/vault
 ENV AGENT_TARGET=CLAUDE.md
+
+# "Running" is not "installed": the entrypoint fails the container on bootstrap
+# errors, and this check keeps guarding after startup (sentinel + locked dirs +
+# crontab actually installed).
+HEALTHCHECK --interval=5m --timeout=30s --start-period=2m --retries=3 \
+  CMD ["pwsh", "-NoProfile", "-File", "/opt/system-o/healthcheck.ps1"]
 
 ENTRYPOINT ["pwsh", "-NoProfile", "-File", "/opt/system-o/entrypoint.ps1"]

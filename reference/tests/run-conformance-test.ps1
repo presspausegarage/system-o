@@ -37,6 +37,10 @@
   (unless -KeepVault).
 .PARAMETER ImageTag
   Docker image tag to build/use. Default 'system-o-conformance'.
+.PARAMETER AgentTarget
+  Canonical orientation filename to bootstrap with (CLAUDE.md or AGENTS.md).
+  Default CLAUDE.md; run again with -AgentTarget AGENTS.md to prove the
+  non-Claude orientation leg on the same harness.
 .PARAMETER KeepVault
   Don't delete the temp vault or stop the container on exit — for inspecting
   a failure by hand.
@@ -44,6 +48,8 @@
   pwsh reference/tests/run-conformance-test.ps1 -Target native
 .EXAMPLE
   pwsh reference/tests/run-conformance-test.ps1 -Target docker
+.EXAMPLE
+  pwsh reference/tests/run-conformance-test.ps1 -Target native -AgentTarget AGENTS.md
 #>
 [CmdletBinding()]
 param(
@@ -51,6 +57,8 @@ param(
   [string]$Target = 'native',
   [string]$VaultRoot,
   [string]$ImageTag = 'system-o-conformance',
+  [ValidateSet('CLAUDE.md', 'AGENTS.md')]
+  [string]$AgentTarget = 'CLAUDE.md',
   [switch]$KeepVault
 )
 
@@ -221,7 +229,7 @@ function Test-Vault {
   Record 'locked taxonomy present' ($missingDirs.Count -eq 0) ($missingDirs -join ', ')
 
   $orientCandidates = @(@('CLAUDE.md', 'AGENTS.md') | Where-Object { Test-Path (Join-Path $VaultRoot $_) })
-  Record 'exactly one orientation file' ($orientCandidates.Count -eq 1) ("found: " + ($orientCandidates -join ', '))
+  Record 'exactly one orientation file, matching -AgentTarget' ($orientCandidates.Count -eq 1 -and $orientCandidates[0] -eq $AgentTarget) ("expected: $AgentTarget; found: " + ($orientCandidates -join ', '))
 
   Record 'GLOSSARY.md present' (Test-Path (Join-Path $VaultRoot '_meta/GLOSSARY.md'))
   Record 'agent-context/MEMORY.md present' (Test-Path (Join-Path $VaultRoot '_meta/agent-context/MEMORY.md'))
@@ -253,15 +261,17 @@ try {
     New-Item -ItemType Directory -Path $VaultRoot -Force | Out-Null
     Write-Host "[setup] native bootstrap at $VaultRoot"
 
-    # bootstrap.ps1's Copy-Item sources are hardcoded to /opt/system-o/* — on
-    # Windows PowerShell resolves a leading '/' as drive-root-relative, so
-    # this fakes the container's baked-in layout at <drive-root>\opt\system-o
-    # (same technique used for the 2026-07-03 manual rehearsal). crontab.example
-    # is deliberately NOT copied here: bootstrap.ps1 calls the real `crontab`
-    # binary with no existence check when that file is present, which doesn't
-    # exist on Windows — omitting it makes bootstrap take its documented WARN
-    # branch instead of throwing, so native mode can test everything else.
-    $fakeOptDir = '/opt/system-o'
+    # Stage the framework layout into a GUID-named directory under the OS temp
+    # root and hand it to bootstrap via -SourceRoot. Never an absolute shared
+    # path like /opt/system-o: a pre-existing real install there must be
+    # untouchable by a test run, so the staging dir is created by this run,
+    # refused if it somehow already exists, and the cleanup removes only it.
+    # crontab.example is deliberately NOT staged: bootstrap.ps1 calls the real
+    # `crontab` binary when that file is present, which native hosts (Windows
+    # especially) don't have — omitting it makes bootstrap take its documented
+    # WARN branch instead of failing, so native mode can test everything else.
+    $fakeOptDir = Join-Path ([System.IO.Path]::GetTempPath()) ("system-o-fixture-" + [guid]::NewGuid().ToString('N'))
+    if (Test-Path $fakeOptDir) { throw "staging collision: $fakeOptDir already exists — refusing to reuse a directory this run did not create" }
     New-Item -ItemType Directory -Path (Join-Path $fakeOptDir 'scripts')    -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $fakeOptDir 'extensions') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $fakeOptDir 'templates')  -Force | Out-Null
@@ -270,11 +280,11 @@ try {
     Copy-Item -Path (Join-Path $RepoRoot 'reference/templates/*')  -Destination (Join-Path $fakeOptDir 'templates')  -Recurse -Force
     Copy-Item -Path (Join-Path $RepoRoot 'spec/wrap-tail-repair.example.yaml') -Destination (Join-Path $fakeOptDir 'wrap-tail-repair.example.yaml') -Force
 
-    & pwsh -NoProfile -File (Join-Path $RepoRoot 'reference/docker/bootstrap.ps1') -VaultRoot $VaultRoot -AgentTarget 'CLAUDE.md' 2>&1 | ForEach-Object { Write-Host "[bootstrap] $_" }
+    & pwsh -NoProfile -File (Join-Path $RepoRoot 'reference/docker/bootstrap.ps1') -VaultRoot $VaultRoot -AgentTarget $AgentTarget -SourceRoot $fakeOptDir 2>&1 | ForEach-Object { Write-Host "[bootstrap] $_" }
     if ($LASTEXITCODE -ne 0) { throw "bootstrap.ps1 exited $LASTEXITCODE on first run" }
 
     $preHash = (Get-FileHash -Path (Join-Path $VaultRoot '_meta/session-log.md') -Algorithm SHA256).Hash
-    & pwsh -NoProfile -File (Join-Path $RepoRoot 'reference/docker/bootstrap.ps1') -VaultRoot $VaultRoot -AgentTarget 'CLAUDE.md' 2>&1 | ForEach-Object { Write-Host "[bootstrap#2] $_" }
+    & pwsh -NoProfile -File (Join-Path $RepoRoot 'reference/docker/bootstrap.ps1') -VaultRoot $VaultRoot -AgentTarget $AgentTarget -SourceRoot $fakeOptDir 2>&1 | ForEach-Object { Write-Host "[bootstrap#2] $_" }
     $postHash = (Get-FileHash -Path (Join-Path $VaultRoot '_meta/session-log.md') -Algorithm SHA256).Hash
     Record 'idempotent re-bootstrap leaves session-log.md untouched' ($LASTEXITCODE -eq 0 -and $preHash -eq $postHash)
 
@@ -292,7 +302,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "docker build failed (exit $LASTEXITCODE)" }
 
     Write-Host "[setup] docker run --init -d --name $containerName -v `"$VaultRoot`":/vault $ImageTag"
-    & docker run --init -d --name $containerName -v "${VaultRoot}:/vault" -e VAULT_ROOT=/vault -e AGENT_TARGET=CLAUDE.md $ImageTag
+    & docker run --init -d --name $containerName -v "${VaultRoot}:/vault" -e VAULT_ROOT=/vault -e AGENT_TARGET=$AgentTarget $ImageTag
     if ($LASTEXITCODE -ne 0) { throw "docker run failed (exit $LASTEXITCODE)" }
 
     $sessionLog = Join-Path $VaultRoot '_meta/session-log.md'

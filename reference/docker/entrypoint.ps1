@@ -17,7 +17,15 @@
 $ErrorActionPreference = 'Stop'
 Write-Host "[entrypoint] running bootstrap"
 & pwsh -NoProfile -File /opt/system-o/bootstrap.ps1
-if ($LASTEXITCODE -ne 0) { Write-Host "[entrypoint] bootstrap exited $LASTEXITCODE — continuing anyway (cron still starts)" }
+if ($LASTEXITCODE -ne 0) {
+  # Fail the container rather than start cron over a broken install: a running
+  # container must mean a completed bootstrap. With `restart: unless-stopped`
+  # Docker retries; `docker logs` carries the bootstrap error. (bootstrap.ps1
+  # writes its session-log sentinel last, so a failed run re-scaffolds cleanly
+  # on the next start.)
+  Write-Host "[entrypoint] bootstrap FAILED (exit $LASTEXITCODE) — not starting cron"
+  exit $LASTEXITCODE
+}
 
 Write-Host "[entrypoint] starting cron (foreground)"
 & cron -f
