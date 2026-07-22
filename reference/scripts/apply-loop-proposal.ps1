@@ -11,6 +11,15 @@
   On success the proposal file is deleted (it is a machine-generated artifact;
   the ledger keeps the record). -Reject moves it to _sewerpipe/ if present,
   else deletes it.
+
+  Scope enforcement (spec §Loop manifest: "Enforced by the runner and the
+  applier"): the proposal's target must be listed under scope: in the loop's
+  manifest. The manifest is taken from -Manifest when given (the runner's
+  auto-apply always passes its own), else resolved from the proposal's loop
+  name at _meta/loops/<loop>.yaml. An out-of-scope target is a hard refusal.
+  If no manifest can be found (e.g. the loop ran from an ad-hoc manifest and
+  this is a manual walk), the apply proceeds with a WARN — this path is the
+  attended human gate, and the runner-side check has already run.
 .EXAMPLE
   apply-loop-proposal.ps1 -File _meta/loops/proposals/loop-wrap-tail-repair-bump-home-updated-2026-07-01.md -Root .
 #>
@@ -18,6 +27,7 @@
 param(
   [Parameter(Mandatory)][string]$File,
   [string]$Root = '.',
+  [string]$Manifest,
   [switch]$Reject
 )
 
@@ -56,6 +66,31 @@ if ($Reject) {
   }
   Add-Ledger 'rejected'
   exit 0
+}
+
+# Scope gate — see .DESCRIPTION. Applies only (a reject never touches the target).
+$target = $fm['target']
+$mfPath = $Manifest
+if (-not $mfPath) {
+  $candidate = Join-Path $Root ("_meta/loops/{0}.yaml" -f $loop)
+  if (Test-Path $candidate) { $mfPath = $candidate }
+}
+if ($mfPath) {
+  $scope = [System.Collections.Generic.List[string]]::new()
+  $inScopeBlock = $false
+  foreach ($line in (Get-Content -Path $mfPath -Encoding UTF8)) {
+    if ($line -match '^scope:\s*$') { $inScopeBlock = $true; continue }
+    if ($inScopeBlock) {
+      if ($line -match '^\s+-\s+(.+?)\s*$') { $scope.Add(($Matches[1].Trim('"').Trim("'"))); continue }
+      if ($line -match '^\S') { $inScopeBlock = $false }
+    }
+  }
+  if (-not $target) { throw "Proposal has no target: field — cannot scope-check: $File" }
+  if ($scope -notcontains $target) {
+    throw "SCOPE VIOLATION: proposal targets '$target', which is not in the manifest's scope ($($scope -join ', ')) — refused. Manifest: $mfPath"
+  }
+} else {
+  Write-Warning "no loop manifest found for '$loop' (no -Manifest given, no _meta/loops/$loop.yaml) — scope not verified; proceeding on the attended gate"
 }
 
 $sessionLog = Join-Path $Root '_meta/session-log.md'

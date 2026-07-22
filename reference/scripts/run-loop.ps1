@@ -12,10 +12,20 @@
   transport OR verification advances to the next endpoint. If all endpoints
   fail, the loop fails closed: no proposal, logged, nonzero finding count.
 
-  Ships with the wrap-tail-repair example (spec/wrap-tail-repair.example.yaml
-  + detect-wrap-tail.ps1); the findings adapter understands that detector's
-  dry-run output. A second loop forces the detector interface fully out into
-  the manifest.
+  REFERENCE-CELL SCOPE (honest boundary, not small print): this runner is the
+  wrap-tail-repair reference cell. What it enforces generically from any
+  manifest: scope (a proposal targeting a path outside scope: is suppressed,
+  and auto-apply hands the manifest to the applier so it re-checks), budget
+  (max_prompt_chars truncation, max_calls_per_run counted per LLM call),
+  endpoint chain order + degradation, per-endpoint timeout, apply gating via
+  auto_apply_endpoints, detect-step inertness (-DryRun is forced on). What is
+  wrap-tail-SPECIFIC: the findings adapter (it parses detect-wrap-tail.ps1's
+  dry-run contract line and nothing else), the 'structural' verifier, and the
+  two repair types (prepend-session-log-entry, bump-home-updated). A second,
+  materially different loop needs its findings adapter, verifier id, and
+  repair types implemented here — that is the seam, and the runner refuses
+  manifests declaring a verifier it does not implement rather than silently
+  treating unknown output as clean.
 
   Proposals land in <root>/_meta/loops/proposals/ — kept out of any
   capture/triage-owned path so ingestion automation never sweeps
@@ -95,9 +105,15 @@ function Read-LoopManifest {
 }
 
 # --- Setup -----------------------------------------------------------------
-$mf = Read-LoopManifest (Resolve-Path $Manifest).Path
+$manifestPath = (Resolve-Path $Manifest).Path
+$mf = Read-LoopManifest $manifestPath
 $loopName = $mf['loop']
 if (-not $loopName) { throw "Manifest has no 'loop:' field." }
+if ($mf.scope.Count -eq 0) { throw "Manifest has no 'scope:' entries — scope is required and enforced (spec §Loop manifest)." }
+$verifierId = [string]($mf['verify'] ?? '')
+if ($verifierId -ne 'structural') {
+  throw "Unsupported verify: '$verifierId'. This reference runner implements the 'structural' verifier (wrap-tail-repair cell); a different verifier id needs an implementation here before its manifest can run (see .DESCRIPTION)."
+}
 
 $logDir  = Join-Path $Root '_meta/logs'
 $logFile = Join-Path $logDir ("loop-{0}-{1}.log" -f $loopName, (Get-Date -Format 'yyyy-MM-dd'))
@@ -119,7 +135,18 @@ $autoEps      = @($mf['auto_apply_endpoints'])
 # --- 1. DETECT ---------------------------------------------------------------
 $detector = Join-Path $Root ('_meta/scripts/' + $mf.detect['script'])
 if (-not (Test-Path $detector)) { throw "Detector not found: $detector" }
-$detectOut = & $detector -Root $Root -DryRun *>&1 | ForEach-Object { "$_" }
+# detect.args passes through from the manifest; -DryRun is forced on if absent,
+# because the runner's detect step must be read-only (spec §Loop manifest's
+# determinism guarantees) — a manifest cannot opt its detector into writing here.
+$detectArgs = @()
+if ($mf.detect['args']) { $detectArgs = @("$($mf.detect['args'])" -split '\s+' | Where-Object { $_ }) }
+if ($detectArgs -notcontains '-DryRun') {
+  if ($mf.detect['args']) { Say "note: detect.args lacks -DryRun — forcing it (the runner's detect step is always read-only)" }
+  $detectArgs += '-DryRun'
+}
+# Invoked as a child pwsh so the manifest's args bind as real parameters —
+# in-process array splatting would pass '-DryRun' positionally, not as a switch.
+$detectOut = & pwsh -NoProfile -File $detector -Root $Root @detectArgs *>&1 | ForEach-Object { "$_" }
 foreach ($l in $detectOut) { Say ("detect> " + $l) }
 
 $gaps = @(); $homeStale = $false
@@ -130,7 +157,7 @@ foreach ($l in $detectOut) {
   }
 }
 if ($gaps.Count -eq 0 -and -not $homeStale) {
-  Say "STATUS loop=$loopName gaps=0 home_stale=0 proposals_new=0 auto_applied=0 verifier_fail=0 (clean)"
+  Say "STATUS loop=$loopName gaps=0 home_stale=0 proposals_new=0 auto_applied=0 verifier_fail=0 scope_fail=0 (clean)"
   exit 0
 }
 Say ("findings: {0} session-log gap(s) [{1}]; HOME stale: {2}" -f $gaps.Count, ($gaps -join ', '), $homeStale)
@@ -197,11 +224,20 @@ function Test-SessionLogEntry {
   return ,$reasons
 }
 
+# Scope gate (spec §Loop manifest: "Enforced by the runner and the applier"):
+# a proposal may only ever target a manifest scope: path. Checked here before a
+# proposal is written, and re-checked by the applier (auto-apply hands it this
+# run's manifest so the second check never depends on filename conventions).
+function Test-InScope {
+  param([string]$Target)
+  return ($mf.scope -contains $Target)
+}
+
 function Invoke-AutoApply {
   param([string]$ProposalFile, [string]$Endpoint)
   if ($applyMode -ne 'auto' -or $autoEps -notcontains $Endpoint) { return $false }
   try {
-    $out = & (Join-Path $PSScriptRoot 'apply-loop-proposal.ps1') -File $ProposalFile -Root $Root *>&1 | ForEach-Object { "$_" }
+    $out = & (Join-Path $PSScriptRoot 'apply-loop-proposal.ps1') -File $ProposalFile -Root $Root -Manifest $manifestPath *>&1 | ForEach-Object { "$_" }
     foreach ($l in $out) { Say ("apply> " + $l) }
     return $true
   } catch {
@@ -214,9 +250,27 @@ function Invoke-Endpoint {
   param([hashtable]$Ep, [string]$Prompt)
   switch ($Ep['driver']) {
     'claude-cli' {
-      $out = ($Prompt | & claude -p --model $Ep['model'] 2>&1 | Out-String).Trim()
-      if ($LASTEXITCODE -eq 0 -and $out) { return $out }
-      Say ("endpoint claude-cli/{0} failed (exit={1}): {2}" -f $Ep['model'], $LASTEXITCODE, $out.Substring(0, [Math]::Min(160, $out.Length)))
+      # Run in a job so the manifest's timeout_sec is honored — a hung CLI call
+      # must degrade to the next endpoint, not hang the whole loop run.
+      $timeoutSec = [int]($Ep['timeout_sec'] ?? 180)
+      $job = Start-Job -ScriptBlock {
+        param($Prompt, $Model)
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        $OutputEncoding = [System.Text.Encoding]::UTF8
+        $out = ($Prompt | & claude -p --model $Model 2>&1 | Out-String).Trim()
+        @{ out = $out; code = $LASTEXITCODE }
+      } -ArgumentList $Prompt, $Ep['model']
+      if (-not (Wait-Job -Job $job -Timeout $timeoutSec)) {
+        Stop-Job -Job $job
+        Remove-Job -Job $job -Force
+        Say ("endpoint claude-cli/{0} timed out after {1}s — degrading to next endpoint" -f $Ep['model'], $timeoutSec)
+        return $null
+      }
+      $r = Receive-Job -Job $job
+      Remove-Job -Job $job -Force
+      $rOut = [string]($r['out'] ?? '')
+      if ([int]($r['code'] ?? 1) -eq 0 -and $rOut) { return $rOut }
+      Say ("endpoint claude-cli/{0} failed (exit={1}): {2}" -f $Ep['model'], $r['code'], $rOut.Substring(0, [Math]::Min(160, $rOut.Length)))
       return $null
     }
     'stub' {   # deterministic canned response — conformance testing (spec §Measured
@@ -243,7 +297,7 @@ function Invoke-Endpoint {
 
 # --- 2+3. PROPOSE + VERIFY per finding --------------------------------------
 $template = Get-Content -Path (Join-Path $Root ('_meta/templates/' + $mf['prompt'])) -Raw -Encoding UTF8
-$newProposals = 0; $verifierFails = 0; $calls = 0; $autoApplied = 0; $appliedMaxDate = $null
+$newProposals = 0; $verifierFails = 0; $scopeFails = 0; $calls = 0; $autoApplied = 0; $appliedMaxDate = $null
 
 $homeUpdated = $null
 $homeFile = Join-Path $Root '_meta/HOME.md'
@@ -272,6 +326,9 @@ foreach ($g in $gaps) {
 
   $accepted = $null; $usedEp = $null
   foreach ($ep in $mf.endpoints) {
+    # Cap checked here, where calls are counted — the per-gap check alone lets
+    # one multi-endpoint finding overshoot the budget.
+    if ($calls -ge $maxCalls) { Say "budget: max_calls_per_run=$maxCalls reached mid-finding — remaining endpoints skipped"; break }
     $calls++
     Say ("gap ${g}: proposing via {0}/{1}" -f $ep['driver'], $ep['model'])
     $draft = Invoke-Endpoint -Ep $ep -Prompt $prompt
@@ -284,15 +341,21 @@ foreach ($g in $gaps) {
   }
 
   if ($accepted) {
-    if (-not $DryRun) {
-      $pFile = Write-Proposal -Change 'prepend-session-log-entry' -Target '_meta/session-log.md' -EntryDate $d -Endpoint $usedEp -Body $accepted -Handoff $hBase
-      Add-Ledger @{ loop = $loopName; change = 'prepend-session-log-entry'; entry_date = $d; handoff = $hBase; endpoint = $usedEp; verifier = 'pass'; applied = $false }
-      if (Invoke-AutoApply -ProposalFile $pFile -Endpoint $usedEp) {
-        $autoApplied++
-        if ($null -eq $appliedMaxDate -or $d -gt $appliedMaxDate) { $appliedMaxDate = $d }
-      }
-    } else { Say "gap ${g}: [dry-run] verified draft ready (endpoint $usedEp) — not written" }
-    $newProposals++
+    if (-not (Test-InScope '_meta/session-log.md')) {
+      Say "gap ${g}: SCOPE VIOLATION — proposal targets _meta/session-log.md, which is not in manifest scope — suppressed"
+      $scopeFails++
+      if (-not $DryRun) { Add-Ledger @{ loop = $loopName; change = 'prepend-session-log-entry'; entry_date = $d; handoff = $hBase; endpoint = $usedEp; verifier = 'scope-fail'; applied = $false } }
+    } else {
+      if (-not $DryRun) {
+        $pFile = Write-Proposal -Change 'prepend-session-log-entry' -Target '_meta/session-log.md' -EntryDate $d -Endpoint $usedEp -Body $accepted -Handoff $hBase
+        Add-Ledger @{ loop = $loopName; change = 'prepend-session-log-entry'; entry_date = $d; handoff = $hBase; endpoint = $usedEp; verifier = 'pass'; applied = $false }
+        if (Invoke-AutoApply -ProposalFile $pFile -Endpoint $usedEp) {
+          $autoApplied++
+          if ($null -eq $appliedMaxDate -or $d -gt $appliedMaxDate) { $appliedMaxDate = $d }
+        }
+      } else { Say "gap ${g}: [dry-run] verified draft ready (endpoint $usedEp) — not written" }
+      $newProposals++
+    }
   } else {
     Say "gap ${g}: FAIL-CLOSED — no endpoint produced a verifiable entry"
     if (-not $DryRun) { Add-Ledger @{ loop = $loopName; change = 'prepend-session-log-entry'; entry_date = $d; handoff = $hBase; endpoint = 'none'; verifier = 'fail'; applied = $false } }
@@ -307,6 +370,11 @@ $needHomeBump = $homeStale -or ($null -ne $appliedMaxDate -and $null -ne $homeUp
 if ($needHomeBump -and -not $homeStale) {
   Say ("home cascade: auto-applied entry {0} outdates HOME stamp {1} — co-emitting bump" -f $appliedMaxDate, $homeUpdated)
 }
+if ($needHomeBump -and -not (Test-InScope '_meta/HOME.md')) {
+  Say "home-stale: SCOPE VIOLATION — bump targets _meta/HOME.md, which is not in manifest scope — suppressed"
+  $scopeFails++
+  $needHomeBump = $false
+}
 if ($needHomeBump) {
   if (Test-PendingProposal -Change 'bump-home-updated' -EntryDate '') { Say "home-stale: proposal already pending — skipped" }
   else {
@@ -320,4 +388,4 @@ if ($needHomeBump) {
   }
 }
 
-Say ("STATUS loop=$loopName gaps=$($gaps.Count) home_stale=$([int]$homeStale) proposals_new=$newProposals auto_applied=$autoApplied verifier_fail=$verifierFails")
+Say ("STATUS loop=$loopName gaps=$($gaps.Count) home_stale=$([int]$homeStale) proposals_new=$newProposals auto_applied=$autoApplied verifier_fail=$verifierFails scope_fail=$scopeFails")

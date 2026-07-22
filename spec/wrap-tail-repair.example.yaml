@@ -3,8 +3,14 @@
 # Consumed by reference/scripts/run-loop.ps1. Policy lives HERE, not in prompts or code.
 #
 # This is the reference implementation's example loop: it maintains the invariant
-# that every handoff is indexed by a session-log entry. Adopt it as-is or use it
-# as the template for a second loop.
+# that every handoff is indexed by a session-log entry. Adopt it as-is.
+#
+# Honest boundary: the reference runner enforces scope, budget, endpoint
+# degradation, timeouts, and apply gating generically from any manifest, but its
+# findings adapter, 'structural' verifier, and repair types are specific to THIS
+# loop. A second, materially different loop is a manifest PLUS its adapter/
+# verifier/repair implementations in run-loop.ps1 — see that script's
+# .DESCRIPTION for the seam.
 
 loop: wrap-tail-repair
 invariant: every handoff in window is linked by a session-log entry, and HOME updated matches the newest entry
@@ -14,6 +20,8 @@ scope:
   - _meta/session-log.md
   - _meta/HOME.md
 
+# args pass through to the detector; the runner forces -DryRun on regardless
+# (its detect step is always read-only).
 detect:
   script: detect-wrap-tail.ps1
   args: -DryRun

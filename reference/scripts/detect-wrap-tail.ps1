@@ -145,6 +145,21 @@ if ($newestLogged -and (-not $homeUpdated -or $homeUpdated -lt $newestLogged)) {
 # locate the newest active handoff (self-clearing annotation target)
 $active = @()
 if (Test-Path $handoffsDir) { $active = @(Get-ChildItem -Path $handoffsDir -Filter '*.md' -File | Sort-Object Name) }
+
+if ($DryRun) {
+  # Dry-run reports findings regardless of whether an annotation target exists:
+  # the loop runner only ever sees this line, so an empty active-handoff dir
+  # must not mask archived-handoff or commit-only gaps as a clean pass.
+  if ($gaps.Count -eq 0 -and $staleHome.Count -eq 0) {
+    Say "clean: no session-log gaps or stale HOME in window"
+  } else {
+    $flagTarget = if ($active.Count -gt 0) { $active[-1].Name } else { '(no active handoff)' }
+    Say "[dry-run] would flag in ${flagTarget}: $($gaps.Count) session-log gap(s) [$($gaps -join ', ')]; HOME stale: $($staleHome.Count)"
+    foreach ($x in $staleHome) { Say ("    " + ($x -replace '\*\*','')) }
+  }
+  exit 0
+}
+
 if ($active.Count -eq 0) {
   Say "WARN no active handoff to annotate; gaps=$($gaps.Count) staleHome=$($staleHome.Count)"
   exit 0
@@ -160,16 +175,10 @@ $stripped = $stripped.TrimEnd() + "`n"
 
 if ($gaps.Count -eq 0 -and $staleHome.Count -eq 0) {
   Say "clean: no session-log gaps or stale HOME in window"
-  if (-not $DryRun -and $stripped -ne $original) {
+  if ($stripped -ne $original) {
     Set-Content -Path $newest.FullName -Value $stripped -Encoding UTF8 -NoNewline
     Say "cleared a stale check block from $($newest.Name)"
   }
-  exit 0
-}
-
-if ($DryRun) {
-  Say "[dry-run] would flag in $($newest.Name): $($gaps.Count) session-log gap(s) [$($gaps -join ', ')]; HOME stale: $($staleHome.Count)"
-  foreach ($x in $staleHome) { Say ("    " + ($x -replace '\*\*','')) }
   exit 0
 }
 
