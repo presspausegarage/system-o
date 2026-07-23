@@ -153,12 +153,12 @@ _Stage-2 onboarding (an agent-guided pass) should replace this with prose specif
 "@ | Set-Content -Path $orientFile -Encoding UTF8
   }
 
-  # Example loop manifest, shipped INERT (.yaml.example, not .yaml): its endpoints
+  # Example loop manifests, shipped INERT (.yaml.example, not .yaml): their endpoints
   # are placeholders, and cron-ing a loop that fail-closes every night out of the
   # box is noise, not a feature. Rename + fill in real endpoints to activate.
-  $exampleManifest = Join-Path $SourceRoot 'wrap-tail-repair.example.yaml'
-  if (Test-Path $exampleManifest) {
-    Copy-Item -Path $exampleManifest -Destination (Join-Path $VaultRoot '_meta/loops/wrap-tail-repair.yaml.example') -Force
+  foreach ($exampleManifest in @(Get-ChildItem -Path $SourceRoot -Filter '*.example.yaml' -File -ErrorAction SilentlyContinue)) {
+    $loopBase = $exampleManifest.Name -replace '\.example\.yaml$', ''
+    Copy-Item -Path $exampleManifest.FullName -Destination (Join-Path $VaultRoot ("_meta/loops/{0}.yaml.example" -f $loopBase)) -Force
   }
 
   # Starter session-log.md — written LAST: it is the install-complete sentinel,
@@ -177,7 +177,7 @@ Running record of work sessions — one entry per session, newest at top.
 "@ | Set-Content -Path $sessionLog -Encoding UTF8
 
   Say "scaffold complete: $($dirs.Count) folders, orientation file ($AgentTarget), starter GLOSSARY/HOME/session-log/agent-context"
-  Say "loop layer shipped INERT: edit _meta/loops/wrap-tail-repair.yaml.example, rename to .yaml, to activate"
+  Say "loop layer shipped INERT: edit a _meta/loops/*.yaml.example, rename to .yaml, to activate"
   Say "STAGE 2 NOT RUN: this container provides no agent. Point an agent harness at $VaultRoot and have it work through _meta/templates/stage-2-onboarding.prompt.md to refine the glossary and orientation-file prose."
 } else {
   Say "existing vault detected at $VaultRoot (session-log.md present) — skipping scaffold (locked dirs repaired if missing), installing the crontab"

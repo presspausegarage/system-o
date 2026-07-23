@@ -22,7 +22,14 @@
        session-log gap + stale HOME is detected, proposed via a canned stub
        endpoint, verified, auto-applied, HOME cascades, and the detector
        self-clears on the next pass.
-    8. (docker only) crontab installed with $VAULT_ROOT substituted
+    8. Second-loop full circle (the v2 runner-seam proof): the shipped
+       kanban-handoff-reconciler cell — different detector, verifier id, and
+       repair types — runs through the same generic runner from a manifest +
+       cell script alone: seeded D1 (ready handoff, citing cards all checked)
+       and D2 (complete handoff citing an open task) drift is detected,
+       proposed propose-only via the stub endpoint, applied through
+       apply-loop-proposal.ps1, and the detector self-clears.
+    9. (docker only) crontab installed with $VAULT_ROOT substituted
 
   Exits 0 only if every check passes; nonzero otherwise. Human-readable
   PASS/FAIL lines to stdout plus a summary report file.
@@ -171,6 +178,7 @@ wrap-tail-repair loop cell's stub driver. Safe to delete.
   @"
 loop: wrap-tail-repair
 invariant: conformance-test fixture
+cell: wrap-tail-repair.cell.ps1
 scope:
   - _meta/session-log.md
   - _meta/HOME.md
@@ -216,6 +224,118 @@ prompt: loop-wrap-tail-repair.prompt.md
   Record 'loop: detector self-clears after apply (guard clean)' ($detectOut2.Contains('clean:')) $detectOut2.Trim()
 }
 
+# --- Second-loop full circle: the v2 runner-seam proof. A materially different
+# cell (kanban-handoff-reconciler: its own detector, verifier id, repair types)
+# runs through the same generic runner from a manifest + cell script alone. ----
+function Test-ReconcilerFullCircle {
+  param([string]$VaultRoot)
+
+  $scriptsDir = Join-Path $VaultRoot '_meta/scripts'
+  $fixDate = (Get-Date).AddDays(-5).ToString('yyyy-MM-dd')
+  $readyBase = "$fixDate-reconciler-fixture-ready"
+  $completeBase = "$fixDate-reconciler-fixture-complete"
+  $handoffsDir = Join-Path $VaultRoot '_meta/handoffs'
+  $boardDir = Join-Path $VaultRoot 'projects/widget-fixture/_meta'
+  New-Item -ItemType Directory -Path $boardDir -Force | Out-Null
+
+  # D1 seed: a ready handoff whose citing Kanban card is already checked
+  @"
+---
+type: handoff
+status: ready
+tags:
+  - type/handoff
+---
+
+# Reconciler fixture handoff (ready)
+
+Synthetic handoff seeded by run-conformance-test.ps1: its citing Kanban card is
+checked, so the reconciler should propose the complete flip. Safe to delete.
+"@ | Set-Content -Path (Join-Path $handoffsDir "$readyBase.md") -Encoding UTF8
+
+  # D2 seed: a complete handoff citing a still-open task
+  @"
+---
+type: handoff
+status: complete
+completed_date: $fixDate
+verification:
+  - task: "projects/widget-fixture/_meta/Kanban.md -- Fix the fixture doohickey -- checked $fixDate"
+tags:
+  - type/handoff
+---
+
+# Reconciler fixture handoff (complete)
+
+Synthetic handoff seeded by run-conformance-test.ps1. Safe to delete.
+"@ | Set-Content -Path (Join-Path $handoffsDir "$completeBase.md") -Encoding UTF8
+
+  @"
+---
+type: kanban
+---
+
+## Backlog
+
+- [ ] Fix the fixture doohickey before ship
+
+## Done
+
+- [x] Ship the fixture widget end to end - done $fixDate, handoff [[$readyBase]]
+"@ | Set-Content -Path (Join-Path $boardDir 'Kanban.md') -Encoding UTF8
+
+  # 1. detector finds both drift types
+  $det1 = & pwsh -NoProfile -File (Join-Path $scriptsDir 'detect-kanban-handoff-drift.ps1') -Root $VaultRoot -DryRun 2>&1 | Out-String
+  Record 'loop2: detector finds D1 + D2 drift' ($det1 -match '1 ready-but-done, 1 cited-but-open') $det1.Trim()
+
+  # 2. canned stub note + throwaway manifest — propose-only like the shipped example
+  $fixDir = Join-Path $VaultRoot '_meta/loops/.conformance-fixtures'
+  New-Item -ItemType Directory -Path $fixDir -Force | Out-Null
+  Set-Content -Path (Join-Path $fixDir 'stub-note.md') -Value 'Fixture widget shipped end to end per the checked Kanban card; seeded by the conformance harness to prove the second loop cell.' -Encoding UTF8 -NoNewline
+  $manifestFile = Join-Path $fixDir 'kanban-handoff-reconciler-conformance.yaml'
+  @"
+loop: kanban-handoff-reconciler
+invariant: conformance-test fixture
+cell: kanban-handoff-reconciler.cell.ps1
+scope:
+  - _meta/handoffs/
+  - "**/_meta/Kanban.md"
+detect:
+  script: detect-kanban-handoff-drift.ps1
+  args: -DryRun
+verify: status-sync
+apply: propose-only
+endpoints:
+  - driver: stub
+    model: canned
+    file: _meta/loops/.conformance-fixtures/stub-note.md
+budget:
+  max_prompt_chars: 24000
+  max_calls_per_run: 6
+prompt: loop-kanban-handoff-reconciler.prompt.md
+"@ | Set-Content -Path $manifestFile -Encoding UTF8
+
+  # 3. run the cell — propose-only must be honored (nothing auto-applies)
+  $loopOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'run-loop.ps1') -Manifest $manifestFile -Root $VaultRoot 2>&1 | Out-String
+  $statusLine = (($loopOut -split "`n") | Where-Object { $_ -match '^STATUS ' } | Select-Object -Last 1)
+  Record 'loop2: two proposals written, propose-only honored' (($statusLine -match 'proposals_new=2') -and ($statusLine -match 'auto_applied=0')) $statusLine
+
+  # 4. apply both through the applier (the attended-walk arm; explicit -Manifest
+  #    because the fixture manifest is not at _meta/loops/<loop>.yaml)
+  $props = @(Get-ChildItem (Join-Path $VaultRoot '_meta/loops/proposals') -Filter 'loop-kanban-handoff-reconciler-*.md' -File)
+  foreach ($p in $props) {
+    & pwsh -NoProfile -File (Join-Path $scriptsDir 'apply-loop-proposal.ps1') -File $p.FullName -Root $VaultRoot -Manifest $manifestFile 2>&1 | ForEach-Object { Write-Host "[apply] $_" }
+  }
+  $flipped = Get-Content -Path (Join-Path $handoffsDir "$readyBase.md") -Raw -Encoding UTF8
+  Record 'loop2: D1 handoff flipped complete with evidence block' (($flipped -match '(?m)^status: complete$') -and ($flipped -match '(?m)^\s+- task: '))
+  $board = Get-Content -Path (Join-Path $boardDir 'Kanban.md') -Raw -Encoding UTF8
+  Record 'loop2: D2 cited task box checked' ($board -match '- \[x\] Fix the fixture doohickey')
+
+  # 5. detector self-clears
+  $det2 = & pwsh -NoProfile -File (Join-Path $scriptsDir 'detect-kanban-handoff-drift.ps1') -Root $VaultRoot -DryRun 2>&1 | Out-String
+  Record 'loop2: detector self-clears after apply' ($det2 -match '0 ready-but-done, 0 cited-but-open') $det2.Trim()
+}
+
 # --- Common assertion set, run against any bootstrapped vault (native or bind mount) --
 function Test-Vault {
   param([string]$VaultRoot)
@@ -254,6 +374,7 @@ function Test-Vault {
   } catch { Record 'build-kanban-csv.ps1 runs clean' $false $_.Exception.Message }
 
   Test-LoopFullCircle -VaultRoot $VaultRoot
+  Test-ReconcilerFullCircle -VaultRoot $VaultRoot
 }
 
 try {
@@ -279,6 +400,7 @@ try {
     Copy-Item -Path (Join-Path $RepoRoot 'reference/extensions/*') -Destination (Join-Path $fakeOptDir 'extensions') -Recurse -Force
     Copy-Item -Path (Join-Path $RepoRoot 'reference/templates/*')  -Destination (Join-Path $fakeOptDir 'templates')  -Recurse -Force
     Copy-Item -Path (Join-Path $RepoRoot 'spec/wrap-tail-repair.example.yaml') -Destination (Join-Path $fakeOptDir 'wrap-tail-repair.example.yaml') -Force
+    Copy-Item -Path (Join-Path $RepoRoot 'spec/kanban-handoff-reconciler.example.yaml') -Destination (Join-Path $fakeOptDir 'kanban-handoff-reconciler.example.yaml') -Force
 
     & pwsh -NoProfile -File (Join-Path $RepoRoot 'reference/docker/bootstrap.ps1') -VaultRoot $VaultRoot -AgentTarget $AgentTarget -SourceRoot $fakeOptDir 2>&1 | ForEach-Object { Write-Host "[bootstrap] $_" }
     if ($LASTEXITCODE -ne 0) { throw "bootstrap.ps1 exited $LASTEXITCODE on first run" }

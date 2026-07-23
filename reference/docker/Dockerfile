@@ -28,6 +28,7 @@ COPY reference/scripts/     /opt/system-o/scripts/
 COPY reference/extensions/  /opt/system-o/extensions/
 COPY reference/templates/   /opt/system-o/templates/
 COPY spec/wrap-tail-repair.example.yaml /opt/system-o/wrap-tail-repair.example.yaml
+COPY spec/kanban-handoff-reconciler.example.yaml /opt/system-o/kanban-handoff-reconciler.example.yaml
 COPY reference/docker/entrypoint.ps1  /opt/system-o/entrypoint.ps1
 COPY reference/docker/bootstrap.ps1   /opt/system-o/bootstrap.ps1
 COPY reference/docker/healthcheck.ps1 /opt/system-o/healthcheck.ps1
