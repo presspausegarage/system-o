@@ -1,4 +1,4 @@
-# system-o specification - v0.2 draft
+# system-o specification - v0.3 draft
 
 > **Status:** draft - 10 sections committed as drafted; remaining v1.0 sections in progress. §Loop manifest carries an explicit reference-implementation status; §Pluggability conformance test has not yet run and is the stated v1.0 gate.
 > **Form:** single file; hard ceiling 1500 lines, target 600-800. Split into modules above ceiling.
@@ -330,12 +330,13 @@ The loop manifest is a YAML file declaring one loop cell (§System architecture)
 ```yaml
 loop: <name>                    # required
 invariant: <sentence>           # required - the condition this loop maintains
+cell: <cell script name>        # required - the loop's cell script (see Cell contract)
 scope:                          # required - the ONLY paths a proposal may target
-  - <vault-relative path>
+  - <vault-relative path>       # exact path | 'dir/' prefix | '**/suffix'
 detect:                         # required - deterministic detector
   script: <script name>
   args: <arguments>
-verify: <verifier id>           # required - deterministic structural check
+verify: <verifier id>           # required - must match the cell's declared verifier
 apply: <mode>                   # required - propose-only | auto (§System architecture)
 auto_apply_endpoints:           # required when apply: auto - the endpoint trust allowlist
   - <driver>/<model>
@@ -358,13 +359,27 @@ prompt: <template filename>     # required - the propose step's prompt template
 
 | Field | Required | Meaning |
 |---|---|---|
-| `scope` | yes | Enforced by the runner and the applier, script-side. A proposal targeting any path outside `scope` is rejected regardless of verifier outcome. |
+| `cell` | yes | The loop's cell script, resolved in `_meta/scripts/cells/`. Carries the loop-specific pieces: findings adapter, verifier, proposal bodies, repair executors. |
+| `scope` | yes | Enforced by the runner and the applier, script-side. A proposal targeting any path outside `scope` is rejected regardless of verifier outcome. Entry grammar: an exact vault-relative path, a directory prefix (trailing `/`), or a `**/` suffix pattern. |
 | `apply` | yes | `propose-only` emits into the review queue; `auto` applies inline for allowlisted endpoints only. |
 | `auto_apply_endpoints` | when `auto` | Trust list keyed by serving endpoint. `deterministic` denotes repairs computed without an LLM. |
 | `promote_after` | no | The clean-pass threshold the apply-mode flip was (or will be) earned against; documentation of evidence, not automation - a human flips `apply`. |
 | `endpoints` | yes | Tried in order. The accepted proposal records which endpoint served it. |
 | `budget` | no | Caps enforced script-side before and during the propose step. |
 | `prompt` | yes | The propose step's template; the propose step cannot run without it. |
+
+### Cell contract
+
+The cell script is the seam between the generic runner and a specific loop. It is dot-sourced by the runner and by the applier, and must define:
+
+- `$CellContract` - declares the verifier id (which must equal the manifest's `verify:`) and the change names the cell implements
+- a findings adapter - turns the detector's output into finding objects (change, target, identity fields, LLM-or-deterministic, prompt variables or body)
+- a draft verifier - deterministic, pure; returns failure reasons for an LLM draft (empty = pass)
+- a proposal-body builder - renders the accepted draft into the proposal's body; for compound repairs the body carries the exact edit to be applied, so the human walk reviews precisely what lands
+- a repair executor - applies one change from the proposal file alone (no in-process cell state; the applier runs in a later process), refusing already-applied, missing, or ambiguous targets
+- optionally, a cascade hook (findings created by this run's applied repairs, proposed in the same run) and extra STATUS fields
+
+A manifest without a `cell:`, a missing cell script, or a cell whose declared verifier differs from the manifest's `verify:` is a refusal - never a clean pass. Policy still lives in the manifest; the cell is mechanism.
 
 ### Runner semantics
 
@@ -387,13 +402,14 @@ Conformance requirements for any loop-runner implementation:
 
 ### Reference implementation status
 
-The schema above is the portable contract. The shipped runner (`reference/scripts/run-loop.ps1`) implements it for the wrap-tail-repair reference cell, with an explicit generic/specific split:
+The schema above is the portable contract. The shipped runner (`reference/scripts/run-loop.ps1`) implements it generically: manifest parsing, detect invocation (read-only, `-DryRun` forced), endpoint chain order and degradation, per-endpoint `timeout_sec`, certified-endpoint reordering under `apply: auto`, `budget` caps, the scope gate (checked before a proposal is written and re-checked by the applier), idempotency against pending proposals, ledger, and STATUS. Everything loop-specific lives behind the cell contract above.
 
-- **Generic, enforced from any manifest:** `scope` (checked by the runner before a proposal is written and re-checked by the applier), `budget` caps, endpoint chain order and degradation, per-endpoint `timeout_sec`, `apply` gating via `auto_apply_endpoints`, and detect-step read-onlyness (`-DryRun` is forced on)
-- **Wrap-tail-specific:** the findings adapter (it parses `detect-wrap-tail.ps1`'s dry-run contract line), the `structural` verifier, and the two repair types
-- The runner refuses a manifest declaring a verifier id it does not implement - it never treats unrecognized detector output as a clean pass
+Two cells ship, materially different at every point of the seam:
 
-A second, materially different loop therefore needs its manifest plus adapter/verifier/repair implementations at that seam; supplying a manifest alone is not yet sufficient. That gap is exactly what §Pluggability conformance test exists to close, and it is open until that test passes.
+- **wrap-tail-repair** - session-log gap detector, `structural` verifier, one LLM repair (drafted session-log entry) plus one deterministic repair (HOME bump) with a cascade between them
+- **kanban-handoff-reconciler** - handoff/Kanban drift detector, `status-sync` verifier, a compound frontmatter repair (status flip with evidence: completed date, drafted completion note, task citations built from the actual matched cards) plus a deterministic box-check repair. Deliberately not a repair: flipping anything to obsolete - supersession is a judgment call, owned by attended judgment passes, never the mechanical loop.
+
+A third loop is therefore a manifest plus a cell script - no runner fork. The conformance harness proves this shape end to end: its second-loop circle runs the reconciler cell through the same runner and applier as wrap-tail, from seeded drift to detector self-clear. One behavior change from the pre-seam applier: a missing manifest at apply time is now a hard refusal rather than a warning, because the manifest names the cell that implements the repair - it is load-bearing for apply, not only for scope.
 
 ### Out of scope (post-v1.0)
 
@@ -401,6 +417,7 @@ A second, materially different loop therefore needs its manifest plus adapter/ve
 - Per-finding endpoint routing (the chain is declared per loop)
 - Retry-within-endpoint policies (one attempt per endpoint per finding)
 - LLM-authored or LLM-modified manifests - policy stays human-authored
+- Stable per-task identifiers for Kanban entries (block anchors or task frontmatter) - the shipped kanban-handoff-reconciler links by handoff basename and citation text instead; IDs become worth revisiting only if citation-text matching proves too imprecise in practice
 
 ---
 
@@ -583,7 +600,7 @@ A reference implementation that exposes a couple of config flags but is otherwis
 
 ### Status
 
-Not yet run. This is breadth-testing (does the *same* reference tooling correctly serve two divergent operators) alongside the depth-testing the existing v1.0 conformance matrix already covers (§System architecture's D6: does the *one* reference vault run correctly on Docker/Windows/Linux hosts). Both are required before the "operating system, not a personal script collection" claim holds - depth alone would still permit a reference implementation quietly hardcoded to one operator's shape.
+Not yet run in full. The loop-layer seam it depends on is now in place: Vault B's "a different loop cell entirely" requirement is exercisable since v0.3's cell contract (§Loop manifest), and the conformance harness's second-loop circle proves a materially different cell running through the unmodified runner. What remains open is the actual two-vault run - two materially different operator inputs through the shipped bootstrap, checked for divergence plus independent conformance. This is breadth-testing (does the *same* reference tooling correctly serve two divergent operators) alongside the depth-testing the existing v1.0 conformance matrix already covers (§System architecture's D6: does the *one* reference vault run correctly on Docker/Windows/Linux hosts). Both are required before the "operating system, not a personal script collection" claim holds - depth alone would still permit a reference implementation quietly hardcoded to one operator's shape.
 
 ### Out of scope (post-v1.0)
 
