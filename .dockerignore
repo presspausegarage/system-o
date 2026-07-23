@@ -1,10 +1,11 @@
-# Allowlist build context: the image needs reference/ and one spec file, nothing
-# else. Everything not re-included below never reaches the Docker daemon, so an
-# adopter vault, .git/, or any local file inside the clone cannot leak into a
-# build even if it exists here.
+# Allowlist build context: the image needs reference/ and the example loop
+# manifests, nothing else. Everything not re-included below never reaches the
+# Docker daemon, so an adopter vault, .git/, or any local file inside the clone
+# cannot leak into a build even if it exists here.
 *
 !reference
 !spec/wrap-tail-repair.example.yaml
+!spec/kanban-handoff-reconciler.example.yaml
 
 # Belt and braces: even inside the re-included tree, never ship a vault or a
 # local compose override (later lines win).
