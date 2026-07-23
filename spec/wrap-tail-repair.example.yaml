@@ -5,15 +5,20 @@
 # This is the reference implementation's example loop: it maintains the invariant
 # that every handoff is indexed by a session-log entry. Adopt it as-is.
 #
-# Honest boundary: the reference runner enforces scope, budget, endpoint
-# degradation, timeouts, and apply gating generically from any manifest, but its
-# findings adapter, 'structural' verifier, and repair types are specific to THIS
-# loop. A second, materially different loop is a manifest PLUS its adapter/
-# verifier/repair implementations in run-loop.ps1 — see that script's
-# .DESCRIPTION for the seam.
+# The seam (v2): the runner enforces scope, budget, endpoint degradation,
+# timeouts, and apply gating generically from any manifest; the loop-specific
+# pieces — findings adapter, verifier, proposal bodies, repair executors —
+# live in the CELL SCRIPT declared below (_meta/scripts/cells/ in an adopted
+# vault), dot-sourced by run-loop.ps1 and apply-loop-proposal.ps1. A second,
+# materially different loop is a manifest plus a cell script implementing the
+# contract in run-loop.ps1's .DESCRIPTION — no runner fork. The shipped
+# kanban-handoff-reconciler (see kanban-handoff-reconciler.example.yaml) is
+# exactly that second loop.
 
 loop: wrap-tail-repair
 invariant: every handoff in window is linked by a session-log entry, and HOME updated matches the newest entry
+
+cell: wrap-tail-repair.cell.ps1
 
 # The LLM proposal may only ever target these paths. Enforced by the runner and applier.
 scope:

@@ -1,25 +1,29 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-  Apply (or reject) one loop proposal from _meta/loops/proposals/ (spec §Loop manifest).
+  Apply (or reject) one approved loop proposal from _meta/loops/proposals/.
 .DESCRIPTION
-  The apply arm of the loop cell — deterministic, no LLM. Supported changes:
-    prepend-session-log-entry  — insert the proposal body above the newest entry
-                                 in _meta/session-log.md (dupe-guarded)
-    bump-home-updated          — set _meta/HOME.md frontmatter updated: to the
-                                 newest ## YYYY-MM-DD date in session-log.md
-  On success the proposal file is deleted (it is a machine-generated artifact;
-  the ledger keeps the record). -Reject moves it to _sewerpipe/ if present,
-  else deletes it.
+  The apply arm of the loop cell — deterministic, no LLM. v2 (2026-07-22,
+  system-o v0.3.0 seam refactor): repair implementations live in the loop's
+  CELL SCRIPT (manifest cell: field, _meta/scripts/cells/), dot-sourced here
+  and invoked via the cell contract's Invoke-LoopRepair. This applier owns the
+  generic arms: proposal parsing, manifest resolution, scope re-check (same
+  exact | 'dir/' prefix | '**/suffix' grammar as the runner), ledger, reject.
 
-  Scope enforcement (spec §Loop manifest: "Enforced by the runner and the
-  applier"): the proposal's target must be listed under scope: in the loop's
-  manifest. The manifest is taken from -Manifest when given (the runner's
-  auto-apply always passes its own), else resolved from the proposal's loop
-  name at _meta/loops/<loop>.yaml. An out-of-scope target is a hard refusal.
-  If no manifest can be found (e.g. the loop ran from an ad-hoc manifest and
-  this is a manual walk), the apply proceeds with a WARN — this path is the
-  attended human gate, and the runner-side check has already run.
+  Scope is enforced HERE as well as in the runner: auto-apply hands this
+  script the run's manifest via -Manifest; a standalone invocation falls back
+  to _meta/loops/<loop>.yaml. A proposal targeting a path outside the
+  manifest's scope: is refused regardless of who invokes the apply.
+
+  On success the proposal file is deleted (it is a machine-generated artifact;
+  the ledger keeps the record). -Reject moves it to _sewerpipe/ (30d net).
+  Invoked directly, per-item from apply-proposals.ps1's interactive walk, or
+  inline by run-loop.ps1's auto-apply arm.
+
+  v2 behavior change from the pre-seam applier: a missing manifest is now a
+  hard refusal, not a WARN-and-proceed. Repairs live in the manifest-declared
+  cell, so without the manifest there is no repair implementation to run at
+  all - the manifest is load-bearing for apply, not just for scope.
 .EXAMPLE
   apply-loop-proposal.ps1 -File _meta/loops/proposals/loop-wrap-tail-repair-bump-home-updated-2026-07-01.md -Root .
 #>
@@ -44,14 +48,18 @@ foreach ($line in ($fmText -split "`r?`n")) {
 }
 $change = $fm['proposed_change']
 $loop   = $fm['loop']
+$target = [string]($fm['target'] ?? '')
 if (-not $change) { throw "File has no proposed_change field: $File" }
+if (-not $loop)   { throw "File has no loop field: $File" }
 
 function Add-Ledger {
   param([string]$Outcome)
   $ledger = Join-Path $Root ("_meta/loops/{0}.ledger.jsonl" -f $loop)
   $rec = @{ loop = $loop; change = $change; outcome = $Outcome; ts = Get-Date -Format 'yyyy-MM-ddTHH:mm:ss' }
-  if ($fm['entry_date']) { $rec['entry_date'] = $fm['entry_date'] }
-  if ($fm['handoff'])    { $rec['handoff']    = $fm['handoff'] }
+  foreach ($k in $fm.Keys) {
+    if ($k -in 'type','loop','proposed_change','endpoint','generated','tags') { continue }
+    if ([string]$fm[$k]) { $rec[$k] = [string]$fm[$k] }
+  }
   Add-Content -Path $ledger -Value ($rec | ConvertTo-Json -Compress) -Encoding UTF8
 }
 
@@ -68,73 +76,55 @@ if ($Reject) {
   exit 0
 }
 
-# Scope gate — see .DESCRIPTION. Applies only (a reject never touches the target).
-$target = $fm['target']
-$mfPath = $Manifest
-if (-not $mfPath) {
-  $candidate = Join-Path $Root ("_meta/loops/{0}.yaml" -f $loop)
-  if (Test-Path $candidate) { $mfPath = $candidate }
+# --- Manifest resolution + scope re-check -----------------------------------
+if (-not $Manifest) { $Manifest = Join-Path $Root ("_meta/loops/{0}.yaml" -f $loop) }
+if (-not (Test-Path $Manifest)) { throw "Manifest not found for loop '$loop': $Manifest — cannot verify scope or resolve the cell; refusing to apply." }
+$scope = [System.Collections.ArrayList]::new()
+$cellFile = $null
+$inScope = $false
+foreach ($line in (Get-Content -Path $Manifest -Encoding UTF8)) {
+  if ($line -match '^scope:\s*$') { $inScope = $true; continue }
+  if ($inScope -and $line -match '^\s+-\s+(.+?)\s*$') { [void]$scope.Add($Matches[1].Trim('"').Trim("'")); continue }
+  if ($line -match '^\S') { $inScope = $false }
+  if ($line -match '^cell:\s*(\S+)\s*$') { $cellFile = $Matches[1].Trim('"').Trim("'") }
 }
-if ($mfPath) {
-  $scope = [System.Collections.Generic.List[string]]::new()
-  $inScopeBlock = $false
-  foreach ($line in (Get-Content -Path $mfPath -Encoding UTF8)) {
-    if ($line -match '^scope:\s*$') { $inScopeBlock = $true; continue }
-    if ($inScopeBlock) {
-      if ($line -match '^\s+-\s+(.+?)\s*$') { $scope.Add(($Matches[1].Trim('"').Trim("'"))); continue }
-      if ($line -match '^\S') { $inScopeBlock = $false }
-    }
+if ($scope.Count -eq 0) { throw "Manifest $Manifest declares no scope: — refusing to apply." }
+if (-not $cellFile) { throw "Manifest $Manifest declares no cell: — refusing to apply (repairs live in the cell)." }
+
+function Test-InScope {
+  param([string]$T)
+  $t = $T -replace '\\','/'
+  foreach ($s in $scope) {
+    $s = "$s" -replace '\\','/'
+    if ($s.StartsWith('**/')) { if ($t -like ('*/' + $s.Substring(3)) -or $t -eq $s.Substring(3)) { return $true } }
+    elseif ($s.EndsWith('/'))  { if ($t.StartsWith($s)) { return $true } }
+    elseif ($t -eq $s)         { return $true }
   }
-  if (-not $target) { throw "Proposal has no target: field — cannot scope-check: $File" }
-  if ($scope -notcontains $target) {
-    throw "SCOPE VIOLATION: proposal targets '$target', which is not in the manifest's scope ($($scope -join ', ')) — refused. Manifest: $mfPath"
-  }
-} else {
-  Write-Warning "no loop manifest found for '$loop' (no -Manifest given, no _meta/loops/$loop.yaml) — scope not verified; proceeding on the attended gate"
+  return $false
+}
+if (-not (Test-InScope $target)) {
+  Add-Ledger 'scope-refused'
+  throw "SCOPE VIOLATION: proposal targets '$target', not in $loop's manifest scope — refused."
 }
 
-$sessionLog = Join-Path $Root '_meta/session-log.md'
-
-switch ($change) {
-  'prepend-session-log-entry' {
-    $logRaw = (Get-Content -Path $sessionLog -Raw -Encoding UTF8) -replace "`r`n","`n"
-    $entryFirstLine = ($body -split "`n")[0]
-    if ($logRaw.Contains($entryFirstLine)) { throw "Already applied: session-log contains '$entryFirstLine'" }
-    $lines = $logRaw -split "`n"
-    # newest-at-top: insert above the first entry OLDER than this one (below any
-    # same-date entries); falls back to top-of-entries / end-of-file.
-    $entryDate = $fm['entry_date']
-    $insertAt = -1; $firstEntry = -1
-    for ($i = 0; $i -lt $lines.Count; $i++) {
-      if ($lines[$i] -match '^## (\d{4}-\d{2}-\d{2})') {
-        if ($firstEntry -lt 0) { $firstEntry = $i }
-        if ($Matches[1] -lt $entryDate) { $insertAt = $i; break }
-      }
-    }
-    if ($insertAt -lt 0) { $insertAt = if ($firstEntry -ge 0 -and -not $entryDate) { $firstEntry } else { $lines.Count } }
-    # bounds-safe slicing: insertAt may be 0 (insert at top) or $lines.Count (append at end) —
-    # a raw range would wrap/overrun under StrictMode
-    $head = if ($insertAt -gt 0) { @($lines[0..($insertAt-1)]) } else { @() }
-    $tail = if ($insertAt -lt $lines.Count) { @($lines[$insertAt..($lines.Count-1)]) } else { @() }
-    $new = $head + @(($body -replace "`r`n","`n") -split "`n") + @('') + $tail
-    [System.IO.File]::WriteAllText($sessionLog, (($new -join "`n").TrimEnd("`n") + "`n"), [System.Text.UTF8Encoding]::new($false))
-    Write-Output "applied: entry for $($fm['entry_date']) prepended to _meta/session-log.md"
-  }
-  'bump-home-updated' {
-    $newest = $null
-    foreach ($line in (Get-Content -Path $sessionLog -Encoding UTF8)) {
-      if ($line -match '^## (\d{4}-\d{2}-\d{2})') { $newest = $Matches[1]; break }
-    }
-    if (-not $newest) { throw "No dated entries found in session-log.md" }
-    $homeFile = Join-Path $Root '_meta/HOME.md'
-    $homeRaw = Get-Content -Path $homeFile -Raw -Encoding UTF8   # NOT $home: read-only automatic var in pwsh
-    if ($homeRaw -notmatch '(?m)^updated:') { throw "HOME.md has no updated: field" }
-    $homeRaw = $homeRaw -replace '(?m)^updated:.*$', "updated: $newest"
-    [System.IO.File]::WriteAllText($homeFile, $homeRaw, [System.Text.UTF8Encoding]::new($false))
-    Write-Output "applied: HOME.md updated: -> $newest"
-  }
-  default { throw "Unknown proposed_change: $change" }
+# --- Cell resolution + repair -----------------------------------------------
+$cellPath = Join-Path $Root ('_meta/scripts/cells/' + $cellFile)
+if (-not (Test-Path $cellPath)) { throw "Cell script not found: $cellPath" }
+. $cellPath
+if (-not (Get-Command Invoke-LoopRepair -ErrorAction SilentlyContinue)) { throw "Cell $cellFile does not define Invoke-LoopRepair." }
+if ((Get-Variable CellContract -ErrorAction SilentlyContinue) -and ($CellContract['changes'] -notcontains $change)) {
+  throw "Cell $cellFile does not implement change '$change' (declares: $($CellContract['changes'] -join ', '))."
 }
+
+$fields = @{}
+foreach ($k in $fm.Keys) {
+  if ($k -in 'type','loop','proposed_change','target','endpoint','generated','tags') { continue }
+  $fields[$k] = $fm[$k]
+}
+$fields['target'] = $target   # repairs may need the target path (variable-target loops)
+
+$msg = Invoke-LoopRepair -Change $change -Fields $fields -Body $body -Root $Root
+Write-Output $msg
 
 Remove-Item -Path $File -Force -Confirm:$false
 Add-Ledger 'applied'
