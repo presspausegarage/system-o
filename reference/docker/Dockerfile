@@ -7,6 +7,14 @@
 
 FROM mcr.microsoft.com/powershell:7.4-debian-12
 
+# Author and license metadata for the distributed artifact. Without these, a
+# pulled image carries no machine-readable statement of what it is, who holds
+# the copyright, or what terms it ships under.
+LABEL org.opencontainers.image.title="system-o" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.authors="Press Pause Garage LLC" \
+      org.opencontainers.image.source="https://github.com/presspausegarage/system-o"
+
 # git: needed by detect-wrap-tail.ps1's commit-only-date scan.
 # cron: the in-container scheduler (dissolves per-OS scheduler registration —
 # distribution review D1/D3).
@@ -24,6 +32,9 @@ RUN apt-get update \
 # `docker build`, since nothing had ever actually built this image before).
 #
 # The framework ships here, immutable, separate from the operator's vault.
+# LICENSE first: MIT requires the notice to accompany every copy, and this
+# image IS a copy. bootstrap.ps1 carries it on into the adopter's vault.
+COPY LICENSE                /opt/system-o/LICENSE
 COPY reference/scripts/     /opt/system-o/scripts/
 COPY reference/extensions/  /opt/system-o/extensions/
 COPY reference/templates/   /opt/system-o/templates/

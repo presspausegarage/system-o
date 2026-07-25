@@ -356,6 +356,13 @@ function Test-Vault {
   Record 'session-log.md present' (Test-Path (Join-Path $VaultRoot '_meta/session-log.md'))
   Record 'HOME.md present' (Test-Path (Join-Path $VaultRoot '_meta/HOME.md'))
 
+  # MIT lines 12-13: the notice has to accompany the copy. bootstrap.ps1 copies
+  # the framework into the vault, so the vault is a copy. Regression-locked on
+  # both legs because the .dockerignore allowlist silently dropped it before.
+  $licenseInVault = Join-Path $VaultRoot '_meta/LICENSE-system-o'
+  $licenseOk = (Test-Path $licenseInVault) -and ((Get-Content -Path $licenseInVault -Raw) -match 'Press Pause Garage LLC')
+  Record 'MIT notice travels into the vault (_meta/LICENSE-system-o)' $licenseOk
+
   try {
     $extOut = & pwsh -NoProfile -File (Join-Path $VaultRoot '_meta/scripts/run-extensions.ps1') -Root $VaultRoot 2>&1 | Out-String
     $extExit = $LASTEXITCODE
@@ -401,6 +408,10 @@ try {
     Copy-Item -Path (Join-Path $RepoRoot 'reference/templates/*')  -Destination (Join-Path $fakeOptDir 'templates')  -Recurse -Force
     Copy-Item -Path (Join-Path $RepoRoot 'spec/wrap-tail-repair.example.yaml') -Destination (Join-Path $fakeOptDir 'wrap-tail-repair.example.yaml') -Force
     Copy-Item -Path (Join-Path $RepoRoot 'spec/kanban-handoff-reconciler.example.yaml') -Destination (Join-Path $fakeOptDir 'kanban-handoff-reconciler.example.yaml') -Force
+    # LICENSE is staged like the rest of the framework: the image COPYs it to
+    # /opt/system-o/LICENSE, so the native leg has to mirror that or it would
+    # exercise a source tree the container never produces.
+    Copy-Item -Path (Join-Path $RepoRoot 'LICENSE') -Destination (Join-Path $fakeOptDir 'LICENSE') -Force
 
     & pwsh -NoProfile -File (Join-Path $RepoRoot 'reference/docker/bootstrap.ps1') -VaultRoot $VaultRoot -AgentTarget $AgentTarget -SourceRoot $fakeOptDir 2>&1 | ForEach-Object { Write-Host "[bootstrap] $_" }
     if ($LASTEXITCODE -ne 0) { throw "bootstrap.ps1 exited $LASTEXITCODE on first run" }

@@ -6,6 +6,11 @@
 !reference
 !spec/wrap-tail-repair.example.yaml
 !spec/kanban-handoff-reconciler.example.yaml
+# LICENSE is not optional: MIT lines 12-13 require the notice and the AS-IS
+# clause to travel with every copy, and `docker compose up` is the documented
+# primary install path. Excluding it here silently strips the disclaimer from
+# every adopter who does not read the GitHub page.
+!LICENSE
 
 # Belt and braces: even inside the re-included tree, never ship a vault or a
 # local compose override (later lines win).
