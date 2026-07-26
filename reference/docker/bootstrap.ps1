@@ -61,6 +61,21 @@ foreach ($d in $dirs) {
   if (-not (Test-Path $p)) { New-Item -ItemType Directory -Path $p -Force | Out-Null }
 }
 
+# MIT notice travels with the copy (LICENSE lines 12-13). The framework files
+# below are copied into the adopter's vault, so the notice and the AS-IS clause
+# have to land with them or the install ships without the terms it is under.
+# Refreshed on EVERY start, not just fresh vaults, so existing installs pick it
+# up on restart. Named LICENSE-system-o rather than LICENSE so it cannot be read
+# as licensing the adopter's own vault content.
+# Test-Path guarded: the conformance harness stages a SourceRoot, and
+# $ErrorActionPreference is 'Stop', so an unguarded copy would fail the run.
+$licenseSrc = Join-Path $SourceRoot 'LICENSE'
+if (Test-Path $licenseSrc) {
+  Copy-Item -Path $licenseSrc -Destination (Join-Path $VaultRoot '_meta/LICENSE-system-o') -Force
+} else {
+  Say "WARN: no LICENSE at $licenseSrc - the MIT notice did not travel with this install"
+}
+
 if ($fresh) {
   Say "fresh vault at $VaultRoot — scaffolding locked taxonomy"
 
