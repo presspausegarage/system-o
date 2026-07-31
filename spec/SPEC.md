@@ -169,6 +169,39 @@ Category roots (what an adopter calls their projects: `web/`, `apps/`, `games/`,
 
 ---
 
+## § Vault mutation safety
+
+### Purpose
+
+Vault files are durable operator state. A failed edit must not turn an existing file into a stale snapshot, partial reconstruction, or accidental replacement merely because an agent's preferred patch mechanism is unavailable.
+
+### Locked rule
+
+- Existing human-authored vault files must be changed through **scoped, preconditioned edits**: a patch hunk, AST edit, section transform, or equivalent operation that verifies the expected old context before mutation.
+- An agent or tool must not replace an existing vault file wholesale from an in-memory snapshot, heredoc, `Set-Content`, `WriteAllText`, `Copy-Item -Force`, or equivalent as a fallback for unavailable patch tooling.
+- If patch tooling is unavailable, expected context does not match, or the edit cannot be verified, the operation **fails closed**: leave the target untouched, report the blocker, and request operator direction.
+
+### Explicit exceptions
+
+Whole-file creation or replacement is conformant only when one of these conditions is true:
+
+1. **Create if absent** - bootstrap is creating a target that does not exist, with an existence guard checked immediately before the write.
+2. **Declared deterministic generation** - the target is a declared generated file or generated region, its canonical source lives elsewhere, and the generator validates its postcondition. Human-authored content outside the declared generated surface remains untouched.
+3. **Exact operator authorization** - the operator explicitly names the target file and authorizes whole-file replacement for that operation.
+
+### Recovery rule
+
+After an accidental overwrite, stop further writes to the target, identify and verify the exact recovery source, restore it, and disclose both the overwrite and recovery to the operator.
+
+### Conformance guarantees
+
+- The starter orientation file carries the fail-closed mutation rule.
+- Stage-2 onboarding refines starter content through scoped edits and preserves the rule.
+- The conformance harness asserts both requirements in a freshly bootstrapped vault.
+- Bootstrap and deterministic generators document which explicit exception authorizes their writes.
+
+---
+
 ## § Agent orientation files
 
 ### Purpose

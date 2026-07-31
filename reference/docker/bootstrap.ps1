@@ -163,8 +163,9 @@ This is the canonical agent-orientation file for this vault (spec §Agent orient
 - Session log: `_meta/session-log.md`
 - Loop layer: `_meta/loops/` (manifests), `_meta/loops/proposals/` (awaiting review)
 - Extensions: `_meta/extensions/` (see each extension's README.md)
+- Mutation safety: edit existing vault files only with scoped, preconditioned patches; never replace a whole existing file as a fallback. If the edit cannot be verified, stop with the target untouched. Deterministic generators may replace only their declared generated files or regions.
 
-_Stage-2 onboarding (an agent-guided pass) should replace this with prose specific to your workspace — conventions, risk tiers, project registry, and how you want an agent to work here._
+_Stage-2 onboarding (an agent-guided pass) should refine the placeholder sections with scoped edits into prose specific to your workspace — conventions, risk tiers, project registry, and how you want an agent to work here — while preserving the mutation-safety rule._
 "@ | Set-Content -Path $orientFile -Encoding UTF8
   }
 

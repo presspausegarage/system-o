@@ -33,6 +33,7 @@ Full walkthrough, signal handling, and what's deliberately not on by default: [`
 - **System architecture** - the six-layer model, loop-cell pattern (detect → propose → verify → apply), endpoint degradation, measured conformance
 - **Darkloop** - the vault's unattended operating cycle; custody alternates between an attended session and automation, every crossing is a vault artifact
 - **File & folder taxonomy** - the locked minimum a fresh vault needs vs. what an adopter names themselves
+- **Vault mutation safety** - scoped, preconditioned edits to existing vault files; fail closed when an edit cannot be verified, with narrow exceptions for creation, declared generation, and exact operator authorization
 - **Agent orientation files** - the canonical `CLAUDE.md`/`AGENTS.md` cascade
 - **Transform manifest** - deterministic source→target path/content rewrites for porting an orientation file between agents
 - **Loop manifest** - how a loop cell is declared: detect script, propose endpoints (with required degradation chain), structural verify, gated apply
