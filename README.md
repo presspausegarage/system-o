@@ -26,6 +26,8 @@ First start scaffolds the bind-mounted vault (default `~/system-o-vault` - keep 
 
 Full walkthrough, signal handling, and what's deliberately not on by default: [`reference/docker/README.md`](reference/docker/README.md).
 
+The reference also ships an evidence-first dawn report: mail-safe HTML plus a plain-text alternate always land in `_meta/logs/`, while guided SMTP setup is optional and an unconfigured install stays honestly file-only. See [Dawn report and optional email](reference/docker/README.md#dawn-report-and-optional-email).
+
 ## What's in the spec
 
 `spec/SPEC.md` (§ sections):

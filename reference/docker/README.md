@@ -25,6 +25,52 @@ docker build -t system-o -f reference/docker/Dockerfile .
 
 First start scaffolds the bind-mounted vault with the locked folder taxonomy (spec §File & folder taxonomy), a starter `_meta/GLOSSARY.md`, `_meta/HOME.md`, `_meta/session-log.md`, and an orientation file (`CLAUDE.md` by default - set `AGENT_TARGET: AGENTS.md` for a non-Claude agent, **before first boot**: the scaffold runs once, so flipping the variable later does not create the other file). Re-running `docker compose up` against an existing vault only repairs missing locked directories and reinstalls the crontab - it never re-scaffolds over real content (`bootstrap.ps1` checks for `_meta/session-log.md` first).
 
+## Dawn report and optional email
+
+The dawn report is evidence first. `build-dawn-report.ps1` reads the reference
+chain's dated triage, purge, handoff-sweep, extension, and active-loop evidence,
+then always writes both forms before delivery is considered:
+
+- `_meta/logs/dawn-report-<date>.html`
+- `_meta/logs/dawn-report-<date>.txt`
+
+Run it directly with no secrets:
+
+```powershell
+docker compose exec system-o pwsh -NoProfile -File /vault/_meta/scripts/build-dawn-report.ps1 -Root /vault
+```
+
+Email is optional. `send-dawn-report-email.ps1` builds the same evidence and
+then sends a multipart plain-text plus HTML message when configured. With no
+config it exits cleanly with `delivery=file-only reason=unconfigured`. The
+template uses plain `obsidian://` links; there is no hosted redirect dependency.
+
+For Docker, create the config in a host directory outside both the vault and
+the source clone. This command prompts for SMTP settings, writes a root-owned
+mode-0600 file, and sends a content-free test message:
+
+```sh
+mkdir -p ~/.config/system-o
+docker compose run --rm --entrypoint pwsh \
+  -v ~/.config/system-o:/config system-o \
+  -NoProfile -File /opt/system-o/scripts/setup-dawn-email.ps1 \
+  -Root /vault -ConfigPath /config/dawn-email.json
+```
+
+On Unix the SMTP password is plain text inside that permission-protected file.
+The file is mode 0600 from creation and stays outside the vault bind mount. This
+is an explicit local-secret boundary, not encryption. Uncomment the read-only
+config mount and `SYSTEM_O_DAWN_EMAIL_CONFIG` lines in
+`docker-compose.example.yml`, then uncomment the dawn line in
+`crontab.example` and rebuild. Environment-only configuration is also supported
+through the `SYSTEM_O_SMTP_*` variables documented by `setup-dawn-email.ps1`.
+
+For Windows-native use, run the copied `setup-dawn-email.ps1 -Root <vault>`.
+Its default external config location is the current user's application-data
+folder, and the password is protected with current-user DPAPI. `-NonInteractive`
+is a clean no-op for automation. `-SkipTest` saves without the closing test.
+
+
 ## Startup contract
 
 - **A running container means a completed install.** The entrypoint fails the container when `bootstrap.ps1` exits nonzero (including a failed crontab install) instead of starting cron over a broken install; `docker logs` carries the reason.

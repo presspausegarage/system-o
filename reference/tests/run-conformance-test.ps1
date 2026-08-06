@@ -3,7 +3,7 @@
 .SYNOPSIS
   v1.0 conformance harness (distribution-review D6 / spec §Measured conformance).
 .DESCRIPTION
-  Scripted pass/fail gate for "clean install, run, conventions hold" — the one
+  Scripted pass/fail gate for "clean install, run, conventions hold" - the one
   substantive item still open on the pre-public-release blocker list. The same
   script proves all three D6 legs: run with -Target docker on a Windows Docker
   host and again on a Linux Docker host (two runs, same script), and -Target
@@ -16,30 +16,33 @@
     3. Starter orientation and Stage-2 prompt carry the locked vault-mutation
        fail-closed rule (spec §Vault mutation safety)
     4. GLOSSARY.md / agent-context MEMORY.md / session-log.md / HOME.md present
-    5. Idempotent re-bootstrap — a second run must not touch existing content
+    5. Idempotent re-bootstrap - a second run must not touch existing content
     6. run-extensions.ps1 exits 0 with a well-formed STATUS line
     7. build-static-home.ps1 / build-kanban-csv.ps1 run clean
-    8. Loop layer full circle via the stub driver (spec §Measured conformance's
+    8. Dawn report writes HTML plus plain-text evidence, exercises CLEAN,
+       HELD, ATTENTION, and INCOMPLETE, degrades honestly without email, and
+       declines setup cleanly in non-interactive mode.
+    9. Loop layer full circle via the stub driver (spec §Measured conformance's
        conformance vehicle, REQUIRED per D6, not optional): a seeded
        session-log gap + stale HOME is detected, proposed via a canned stub
        endpoint, verified, auto-applied, HOME cascades, and the detector
        self-clears on the next pass.
-    9. Second-loop full circle (the v2 runner-seam proof): the shipped
-       kanban-handoff-reconciler cell — different detector, verifier id, and
-       repair types — runs through the same generic runner from a manifest +
+    10. Second-loop full circle (the v2 runner-seam proof): the shipped
+       kanban-handoff-reconciler cell - different detector, verifier id, and
+       repair types - runs through the same generic runner from a manifest +
        cell script alone: seeded D1 (ready handoff, citing cards all checked)
        and D2 (complete handoff citing an open task) drift is detected,
        proposed propose-only via the stub endpoint, applied through
        apply-loop-proposal.ps1, and the detector self-clears.
-    10. (docker only) crontab installed with $VAULT_ROOT substituted
+    11. (docker only) crontab installed with $VAULT_ROOT substituted
 
   Exits 0 only if every check passes; nonzero otherwise. Human-readable
   PASS/FAIL lines to stdout plus a summary report file.
 .PARAMETER Target
-  'native': runs bootstrap.ps1 directly against a temp vault, no container —
+  'native': runs bootstrap.ps1 directly against a temp vault, no container -
   the Windows-native reference leg (or a quick regression check on any host).
   'docker': builds the reference image and runs it with a temp bind-mounted
-  vault — run this once on a Windows Docker host and once on a Linux Docker
+  vault - run this once on a Windows Docker host and once on a Linux Docker
   host to close both remaining D6 legs.
 .PARAMETER VaultRoot
   Vault directory to use. Default: a fresh temp directory, removed after
@@ -51,7 +54,7 @@
   Default CLAUDE.md; run again with -AgentTarget AGENTS.md to prove the
   non-Claude orientation leg on the same harness.
 .PARAMETER KeepVault
-  Don't delete the temp vault or stop the container on exit — for inspecting
+  Don't delete the temp vault or stop the container on exit - for inspecting
   a failure by hand.
 .EXAMPLE
   pwsh reference/tests/run-conformance-test.ps1 -Target native
@@ -84,7 +87,7 @@ function Record {
   $results.Add(@{ name = $Name; pass = $Pass; detail = $Detail })
   $mark = if ($Pass) { 'PASS' } else { 'FAIL' }
   $line = "[$mark] $Name"
-  if ($Detail) { $line += " — $Detail" }
+  if ($Detail) { $line += " - $Detail" }
   Write-Host $line
 }
 
@@ -107,7 +110,7 @@ function Cleanup {
     Write-Host "[cleanup] removing temp vault $VaultRoot"
     Remove-Item -Path $VaultRoot -Recurse -Force -ErrorAction SilentlyContinue
   } elseif ($KeepVault) {
-    Write-Host "[cleanup] -KeepVault set — vault left at $VaultRoot"
+    Write-Host "[cleanup] -KeepVault set - vault left at $VaultRoot"
   }
 }
 
@@ -118,7 +121,7 @@ function Test-LoopFullCircle {
   $scriptsDir = Join-Path $VaultRoot '_meta/scripts'
   $today = Get-Date -Format 'yyyy-MM-dd'
   $fixDate = (Get-Date).AddDays(-3).ToString('yyyy-MM-dd')
-  # Outside the detector's default 10-day window on purpose — establishes
+  # Outside the detector's default 10-day window on purpose - establishes
   # $newestLogged without itself being eligible as a same-window gap.
   $preDate = (Get-Date).AddDays(-15).ToString('yyyy-MM-dd')
   $staleDate = (Get-Date).AddDays(-20).ToString('yyyy-MM-dd')
@@ -142,7 +145,7 @@ wrap-tail-repair loop cell's stub driver. Safe to delete.
 "@ | Set-Content -Path (Join-Path $handoffsDir "$handoffBase.md") -Encoding UTF8
 
   # Seed one pre-existing session-log entry ($preDate, outside the window) so the
-  # detector has a "newest logged" date to compare HOME's stamp against — with a
+  # detector has a "newest logged" date to compare HOME's stamp against - with a
   # totally empty log (bootstrap's starter state) staleness can never fire, since
   # there's nothing logged yet to be stale relative to.
   $em = [char]0x2014
@@ -152,7 +155,7 @@ wrap-tail-repair loop cell's stub driver. Safe to delete.
   Set-Content -Path $logFile -Value ($logRawPre.TrimEnd() + "`n" + $seedEntry) -Encoding UTF8 -NoNewline
 
   # HOME stale relative to that seeded entry (not yet relative to the fixture gap,
-  # which has no session-log entry at all — that's the gap under test)
+  # which has no session-log entry at all - that's the gap under test)
   $homeFile = Join-Path $VaultRoot '_meta/HOME.md'
   $homeContent = Get-Content -Path $homeFile -Raw -Encoding UTF8
   $homeContent = $homeContent -replace '(?m)^updated:\s*\S+', "updated: $staleDate"
@@ -164,7 +167,7 @@ wrap-tail-repair loop cell's stub driver. Safe to delete.
   $foundStale = ($detectOut1 -match 'HOME stale: [1-9]')
   Record 'loop: detector finds the seeded gap + stale HOME' ($foundGap -and $foundStale) $detectOut1.Trim()
 
-  # 2. canned stub response — deliberately built to pass run-loop.ps1's structural verifier
+  # 2. canned stub response - deliberately built to pass run-loop.ps1's structural verifier
   $fixDir = Join-Path $VaultRoot '_meta/loops/.conformance-fixtures'
   New-Item -ItemType Directory -Path $fixDir -Force | Out-Null
   $em = [char]0x2014
@@ -173,7 +176,7 @@ wrap-tail-repair loop cell's stub driver. Safe to delete.
 
   # 3. temp manifest: driver=stub, apply=auto. 'deterministic' is included in the
   #    allowlist alongside stub/canned so the HOME-cascade bump (always
-  #    system-computed, never model output) also auto-applies in this fixture —
+  #    system-computed, never model output) also auto-applies in this fixture -
   #    this is the harness's own throwaway manifest, not the shipped example,
   #    so it's safe to earn auto here without touching real trust policy.
   $manifestFile = Join-Path $fixDir 'wrap-tail-conformance.yaml'
@@ -290,7 +293,7 @@ type: kanban
   $det1 = & pwsh -NoProfile -File (Join-Path $scriptsDir 'detect-kanban-handoff-drift.ps1') -Root $VaultRoot -DryRun 2>&1 | Out-String
   Record 'loop2: detector finds D1 + D2 drift' ($det1 -match '1 ready-but-done, 1 cited-but-open') $det1.Trim()
 
-  # 2. canned stub note + throwaway manifest — propose-only like the shipped example
+  # 2. canned stub note + throwaway manifest - propose-only like the shipped example
   $fixDir = Join-Path $VaultRoot '_meta/loops/.conformance-fixtures'
   New-Item -ItemType Directory -Path $fixDir -Force | Out-Null
   Set-Content -Path (Join-Path $fixDir 'stub-note.md') -Value 'Fixture widget shipped end to end per the checked Kanban card; seeded by the conformance harness to prove the second loop cell.' -Encoding UTF8 -NoNewline
@@ -317,7 +320,7 @@ budget:
 prompt: loop-kanban-handoff-reconciler.prompt.md
 "@ | Set-Content -Path $manifestFile -Encoding UTF8
 
-  # 3. run the cell — propose-only must be honored (nothing auto-applies)
+  # 3. run the cell - propose-only must be honored (nothing auto-applies)
   $loopOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'run-loop.ps1') -Manifest $manifestFile -Root $VaultRoot 2>&1 | Out-String
   $statusLine = (($loopOut -split "`n") | Where-Object { $_ -match '^STATUS ' } | Select-Object -Last 1)
   Record 'loop2: two proposals written, propose-only honored' (($statusLine -match 'proposals_new=2') -and ($statusLine -match 'auto_applied=0')) $statusLine
@@ -336,6 +339,68 @@ prompt: loop-kanban-handoff-reconciler.prompt.md
   # 5. detector self-clears
   $det2 = & pwsh -NoProfile -File (Join-Path $scriptsDir 'detect-kanban-handoff-drift.ps1') -Root $VaultRoot -DryRun 2>&1 | Out-String
   Record 'loop2: detector self-clears after apply' ($det2 -match '0 ready-but-done, 0 cited-but-open') $det2.Trim()
+}
+
+# --- Dawn crossing report ---------------------------------------------------
+function Test-DawnReport {
+  param([string]$VaultRoot)
+
+  $scriptsDir = Join-Path $VaultRoot '_meta/scripts'
+  $logsDir = Join-Path $VaultRoot '_meta/logs'
+  $today = Get-Date -Format 'yyyy-MM-dd'
+  $htmlPath = Join-Path $logsDir "dawn-report-$today.html"
+  $textPath = Join-Path $logsDir "dawn-report-$today.txt"
+
+  # CLEAN: every registered layer-2 surface reports and none raises work.
+  '[02:00:01] triage-inbox: done. junk=0 proposed=0 stale=0 skipped=0' |
+    Set-Content -Path (Join-Path $logsDir "triage-$today.log") -Encoding UTF8
+  '[02:15:01] purge-sewerpipe: done. deleted=0 total=0MB dry-run=False' |
+    Set-Content -Path (Join-Path $logsDir "purge-sewerpipe-$today.log") -Encoding UTF8
+  '[02:50:01] sweep-handoffs: done. swept=0 kept=0 skipped=0' |
+    Set-Content -Path (Join-Path $logsDir "sweep-handoffs-$today.log") -Encoding UTF8
+  'STATUS extensions=3 flagged=0' |
+    Set-Content -Path (Join-Path $logsDir "extensions-$today.log") -Encoding UTF8
+
+  $cleanOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'build-dawn-report.ps1') -Root $VaultRoot -Date $today 2>&1 | Out-String
+  $cleanHtml = if (Test-Path $htmlPath) { Get-Content -Path $htmlPath -Raw -Encoding UTF8 } else { '' }
+  $cleanText = if (Test-Path $textPath) { Get-Content -Path $textPath -Raw -Encoding UTF8 } else { '' }
+  Record 'dawn: CLEAN writes HTML and plain-text evidence first' ($LASTEXITCODE -eq 0 -and $cleanHtml -match ' CLEAN</td>' -and $cleanText -match '^DAWN REPORT.+CLEAN' -and $cleanOut -match 'delivery=file-only') $cleanOut.Trim()
+
+  # HELD: operator-owned work belongs in TODAY, not in system exceptions.
+  $inboxFixture = Join-Path $VaultRoot '_inbox/dawn-held-fixture.md'
+  'held fixture' | Set-Content -Path $inboxFixture -Encoding UTF8
+  $heldOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'build-dawn-report.ps1') -Root $VaultRoot -Date $today 2>&1 | Out-String
+  $heldHtml = Get-Content -Path $htmlPath -Raw -Encoding UTF8
+  Record 'dawn: HELD verdict exercised by operator-owned inbox work' ($LASTEXITCODE -eq 0 -and $heldHtml -match ' HELD</td>' -and $heldHtml -match 'TODAY') $heldOut.Trim()
+  Remove-Item -Path $inboxFixture -Force
+
+  # ATTENTION: a reported extension finding is distinct from silence.
+  'STATUS extensions=3 flagged=1 [fixture-check]' |
+    Set-Content -Path (Join-Path $logsDir "extensions-$today.log") -Encoding UTF8
+  $attentionOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'build-dawn-report.ps1') -Root $VaultRoot -Date $today 2>&1 | Out-String
+  $attentionHtml = Get-Content -Path $htmlPath -Raw -Encoding UTF8
+  Record 'dawn: ATTENTION verdict exercised by a reported finding' ($LASTEXITCODE -eq 0 -and $attentionHtml -match ' ATTENTION</td>' -and $attentionHtml -match 'fixture-check') $attentionOut.Trim()
+
+  # INCOMPLETE: a future fixture date has no beats for any registered surface.
+  $emptyDate = '2099-12-31'
+  $incompleteOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'build-dawn-report.ps1') -Root $VaultRoot -Date $emptyDate 2>&1 | Out-String
+  $incompleteHtmlPath = Join-Path $logsDir "dawn-report-$emptyDate.html"
+  $incompleteHtml = if (Test-Path $incompleteHtmlPath) { Get-Content -Path $incompleteHtmlPath -Raw -Encoding UTF8 } else { '' }
+  Record 'dawn: INCOMPLETE verdict and silence cards exercise missing beats' ($LASTEXITCODE -eq 0 -and $incompleteHtml -match ' INCOMPLETE</td>' -and $incompleteHtml -match 'SILENCE') $incompleteOut.Trim()
+
+  # Reset clean input, then verify delivery degrades honestly without config.
+  'STATUS extensions=3 flagged=0' |
+    Set-Content -Path (Join-Path $logsDir "extensions-$today.log") -Encoding UTF8
+  $missingConfig = Join-Path $VaultRoot '_meta/nonexistent-dawn-email.json'
+  $degradeOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'send-dawn-report-email.ps1') -Root $VaultRoot -Date $today -ConfigPath $missingConfig 2>&1 | Out-String
+  Record 'dawn: unconfigured email degrades cleanly to file-only mode' ($LASTEXITCODE -eq 0 -and $degradeOut -match 'delivery=file-only reason=unconfigured') $degradeOut.Trim()
+  $noSendOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'send-dawn-report-email.ps1') -Root $VaultRoot -Date $today -ConfigPath $missingConfig -NoSend 2>&1 | Out-String
+  Record 'dawn: -NoSend builds evidence without reading secrets' ($LASTEXITCODE -eq 0 -and $noSendOut -match 'delivery=file-only reason=no-send') $noSendOut.Trim()
+
+
+  $declinePath = Join-Path $VaultRoot '_meta/should-not-exist-email.json'
+  $declineOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'setup-dawn-email.ps1') -Root $VaultRoot -ConfigPath $declinePath -NonInteractive 2>&1 | Out-String
+  Record 'dawn: setup wizard declines cleanly in non-interactive mode' ($LASTEXITCODE -eq 0 -and $declineOut -match 'state=skipped reason=non-interactive' -and -not (Test-Path $declinePath)) $declineOut.Trim()
 }
 
 # --- Common assertion set, run against any bootstrapped vault (native or bind mount) --
@@ -395,6 +460,7 @@ function Test-Vault {
     Record 'build-kanban-csv.ps1 runs clean' ($LASTEXITCODE -eq 0) $(if ($LASTEXITCODE -ne 0) { $out.Trim() } else { '' })
   } catch { Record 'build-kanban-csv.ps1 runs clean' $false $_.Exception.Message }
 
+  Test-DawnReport -VaultRoot $VaultRoot
   Test-LoopFullCircle -VaultRoot $VaultRoot
   Test-ReconcilerFullCircle -VaultRoot $VaultRoot
 }
@@ -411,10 +477,10 @@ try {
     # refused if it somehow already exists, and the cleanup removes only it.
     # crontab.example is deliberately NOT staged: bootstrap.ps1 calls the real
     # `crontab` binary when that file is present, which native hosts (Windows
-    # especially) don't have — omitting it makes bootstrap take its documented
+    # especially) don't have - omitting it makes bootstrap take its documented
     # WARN branch instead of failing, so native mode can test everything else.
     $fakeOptDir = Join-Path ([System.IO.Path]::GetTempPath()) ("system-o-fixture-" + [guid]::NewGuid().ToString('N'))
-    if (Test-Path $fakeOptDir) { throw "staging collision: $fakeOptDir already exists — refusing to reuse a directory this run did not create" }
+    if (Test-Path $fakeOptDir) { throw "staging collision: $fakeOptDir already exists - refusing to reuse a directory this run did not create" }
     New-Item -ItemType Directory -Path (Join-Path $fakeOptDir 'scripts')    -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $fakeOptDir 'extensions') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $fakeOptDir 'templates')  -Force | Out-Null
@@ -440,7 +506,7 @@ try {
 
   } else {
     if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-      throw "docker CLI not found on this host — install Docker (Desktop or Engine) before running -Target docker"
+      throw "docker CLI not found on this host - install Docker (Desktop or Engine) before running -Target docker"
     }
     New-Item -ItemType Directory -Path $VaultRoot -Force | Out-Null
     $containerName = 'system-o-conformance-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
@@ -458,7 +524,7 @@ try {
     while (-not (Test-Path $sessionLog) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 1 }
     if (-not (Test-Path $sessionLog)) {
       & docker logs $containerName 2>&1 | ForEach-Object { Write-Host "[container] $_" }
-      throw "bootstrap never scaffolded the bind-mounted vault within 60s — see container logs above"
+      throw "bootstrap never scaffolded the bind-mounted vault within 60s - see container logs above"
     }
     Start-Sleep -Seconds 2   # let bootstrap.ps1 finish writing every starter file
 
@@ -471,13 +537,13 @@ try {
 
     # Documented gap (reference/docker/README.md §Verified): bootstrap.ps1 runs
     # as root inside the container, so on a Linux host the bind-mounted vault
-    # comes out root-owned — this harness writes fixtures into it from the host
+    # comes out root-owned - this harness writes fixtures into it from the host
     # side, so it needs the documented chown workaround before the rest of the
     # assertion suite can write anything. No-op on Windows hosts, where Docker
     # Desktop's bind-mount layer doesn't enforce POSIX ownership the same way.
     if ($IsLinux -or $IsMacOS) {
       # Probe inside a subdirectory bootstrap.ps1 actually creates (root, inside
-      # the container) — the bind-mount root itself was created host-side by
+      # the container) - the bind-mount root itself was created host-side by
       # this script BEFORE `docker run`, so it stays host-owned regardless and
       # would make this probe a false negative if tested there instead.
       $probe = Join-Path $VaultRoot '_meta/handoffs/.conformance-write-probe'
@@ -487,7 +553,7 @@ try {
       if (-not $writable) {
         $hostUid = (& id -u).Trim()
         $hostGid = (& id -g).Trim()
-        Write-Host "[setup] bind-mounted vault is root-owned — chowning to host uid:gid $hostUid`:$hostGid via docker exec"
+        Write-Host "[setup] bind-mounted vault is root-owned - chowning to host uid:gid $hostUid`:$hostGid via docker exec"
         & docker exec $containerName chown -R "${hostUid}:${hostGid}" /vault
         if ($LASTEXITCODE -ne 0) { throw "chown inside container failed (exit $LASTEXITCODE)" }
       }
@@ -505,10 +571,10 @@ try {
   $reportDir = Join-Path $RepoRoot '_meta/logs'
   if (-not (Test-Path $reportDir)) { New-Item -ItemType Directory -Path $reportDir -Force | Out-Null }
   $reportFile = Join-Path $reportDir ("conformance-{0}-{1}.md" -f $Target, (Get-Date -Format 'yyyy-MM-dd-HHmmss'))
-  $lines = @("# Conformance report — target=$Target — $(Get-Date -Format 'yyyy-MM-dd HH:mm')", '')
+  $lines = @("# Conformance report - target=$Target - $(Get-Date -Format 'yyyy-MM-dd HH:mm')", '')
   foreach ($r in $results) {
     $mark = if ($r.pass) { 'PASS' } else { 'FAIL' }
-    $lines += "- [$mark] $($r.name)$(if ($r.detail) { " — $($r.detail)" })"
+    $lines += "- [$mark] $($r.name)$(if ($r.detail) { " - $($r.detail)" })"
   }
   $lines += @('', "**Result: $($results.Count - $failed.Count)/$($results.Count) passed**")
   $lines -join "`n" | Set-Content -Path $reportFile -Encoding UTF8

@@ -24,6 +24,9 @@ services:
     volumes:
       # host vault path (outside the clone) : container mount
       - ~/system-o-vault:/vault
+      # Optional external dawn-email config. See the Docker README.
+      # - ~/.config/system-o/dawn-email.json:/run/secrets/system-o-dawn-email.json:ro
+
     environment:
       VAULT_ROOT: /vault
       # CLAUDE.md or AGENTS.md (spec §Agent orientation files). Decide BEFORE
@@ -32,4 +35,5 @@ services:
       AGENT_TARGET: CLAUDE.md
       # Cron fires on the container clock - UTC unless you set this.
       # TZ: America/New_York
+      # SYSTEM_O_DAWN_EMAIL_CONFIG: /run/secrets/system-o-dawn-email.json
     restart: unless-stopped

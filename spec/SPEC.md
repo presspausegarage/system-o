@@ -580,6 +580,7 @@ Three different lifespans, three different files - do not conflate them:
 | Template | Consumer | Purpose |
 |---|---|---|
 | `idea-README.md` | `launchpad.ps1` (writes it at scaffold time); `graduate.ps1` (the idea it seeded moves on) | Scaffold for a new `launchpad/<slug>/README.md` - defensibility screen, demand evidence, decide-by clock |
+| `dawn-report.html` | `build-dawn-report.ps1` | Mail-safe HTML template for the §Darkloop dawn crossing; the builder always writes HTML and plain-text evidence before optional delivery |
 | `loop-wrap-tail-repair.prompt.md` | `run-loop.ps1`, via the reference loop manifest's `prompt:` field (`wrap-tail-repair.example.yaml`) | The propose-step prompt template for the reference loop cell (§Loop manifest) |
 | `stage-2-onboarding.prompt.md` | An agent harness, pointed at it directly - by `bootstrap.ps1`'s completion message and by §System architecture's two-stage-onboarding description | The Stage 2 onboarding checklist: read what Stage 1 scaffolded, populate `GLOSSARY.md`, write the real orientation file, confirm ambiguities with the operator rather than guessing |
 

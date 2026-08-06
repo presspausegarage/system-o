@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="supported-color-schemes" content="dark light">
+<title>system-o dawn report</title>
+<!--
+  Mail-safe template consumed by build-dawn-report.ps1.
+  Keep tables and inline styles. Every substituted value must be HTML encoded.
+  Repeatable sections use BEGIN and END comment markers.
+-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #0b0e18; color: #e5e9f4; -webkit-font-smoothing: antialiased;">
+
+<span style="display: none !important; visibility: hidden; opacity: 0; height: 0; width: 0; overflow: hidden; mso-hide: all;">{{PREHEADER}}</span>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #0b0e18;">
+<tr>
+<td align="center" style="padding: 24px 12px 40px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width: 100%; max-width: 600px; background-color: #0b0e18; border: 1px solid #242d4c;">
+
+    <tr>
+      <td bgcolor="#111524" style="background-color: #111524; padding: 14px 22px; border-bottom: 1px solid #242d4c; font-family: Consolas, 'Courier New', monospace; font-size: 12px; line-height: 17px; mso-line-height-rule: exactly; letter-spacing: 0.08em; color: #5e6884;">
+        SYSTEM-O VAULT &nbsp;&#183;&nbsp; <span style="color: #00c8a0;">DAWN REPORT</span> &nbsp;&#183;&nbsp; {{DATE}} {{BUILT_TIME}}
+      </td>
+    </tr>
+
+    <tr>
+      <td bgcolor="#0b0e18" style="background-color: #0b0e18; padding: 26px 22px 22px; border-bottom: 1px solid #242d4c;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 32px; line-height: 36px; mso-line-height-rule: exactly; font-weight: 600; letter-spacing: 0.02em; color: {{VERDICT_COLOR}};">{{VERDICT_GLYPH}} {{VERDICT_WORD}}</td>
+          </tr>
+          <tr>
+            <td style="padding-top: 10px; font-family: Consolas, 'Courier New', monospace; font-size: 14px; line-height: 21px; mso-line-height-rule: exactly; color: #e5e9f4;">{{VERDICT_COUNTS}}</td>
+          </tr>
+          <tr>
+            <td style="padding-top: 6px; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 15px; line-height: 22px; mso-line-height-rule: exactly; color: #9aa5c3;">{{VERDICT_PROSE}}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+<!-- BEGIN:NEEDS_YOU -->
+    <tr>
+      <td bgcolor="#0b0e18" style="background-color: #0b0e18; padding: 18px 22px 6px; font-family: Consolas, 'Courier New', monospace; font-size: 11px; line-height: 15px; mso-line-height-rule: exactly; letter-spacing: 0.1em; color: #d88a3a;">NEEDS YOU &nbsp;&#183;&nbsp; {{NEEDS_YOU_COUNT}}</td>
+    </tr>
+{{NEEDS_YOU_CARDS}}
+<!-- END:NEEDS_YOU -->
+
+<!-- BEGIN:CARD -->
+    <tr>
+      <td style="padding: 10px 22px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#161b2e" style="background-color: #161b2e; border: 1px solid #242d4c; border-left: 3px solid {{STATE_COLOR}};">
+          <tr>
+            <td style="padding: 14px 16px 14px 14px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr><td style="font-family: Consolas, 'Courier New', monospace; font-size: 11px; line-height: 15px; mso-line-height-rule: exactly; letter-spacing: 0.08em; color: {{STATE_COLOR}};"><span style="font-weight: 700;">{{STATE_GLYPH}} {{STATE_WORD}}</span> &nbsp;&#183;&nbsp; {{SOURCE}}</td></tr>
+                <tr><td style="padding-top: 6px; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 17px; line-height: 23px; mso-line-height-rule: exactly; color: #e5e9f4;">{{TITLE}}</td></tr>
+                <tr><td style="padding-top: 5px; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 15px; line-height: 21px; mso-line-height-rule: exactly; color: #9aa5c3;">{{DETAIL}}</td></tr>
+{{EVIDENCE}}
+{{LINK}}
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+<!-- END:CARD -->
+
+<!-- BEGIN:EVIDENCE -->
+                <tr>
+                  <td style="padding-top: 10px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#0a0c14" style="background-color: #0a0c14; border: 1px solid #242d4c;">
+                      <tr><td style="padding: 10px 12px; font-family: Consolas, 'Courier New', monospace; font-size: 12px; line-height: 20px; mso-line-height-rule: exactly; color: #9aa5c3;">{{EVIDENCE_LINES}}</td></tr>
+                    </table>
+                  </td>
+                </tr>
+<!-- END:EVIDENCE -->
+
+<!-- BEGIN:LINK -->
+                <tr><td style="padding-top: 10px; font-family: Consolas, 'Courier New', monospace; font-size: 12px; line-height: 17px; mso-line-height-rule: exactly;"><a href="{{LINK_HREF}}" style="color: #00c8a0; text-decoration: none;">{{LINK_TEXT}} &#8594;</a></td></tr>
+<!-- END:LINK -->
+
+<!-- BEGIN:SILENCE -->
+    <tr>
+      <td bgcolor="#0b0e18" style="background-color: #0b0e18; padding: 22px 22px 6px; font-family: Consolas, 'Courier New', monospace; font-size: 11px; line-height: 15px; mso-line-height-rule: exactly; letter-spacing: 0.1em; color: #d9534f;">SILENCE &nbsp;&#183;&nbsp; A MISSING BEAT IS A FINDING</td>
+    </tr>
+{{SILENCE_CARDS}}
+<!-- END:SILENCE -->
+
+<!-- BEGIN:SILENCE_CARD -->
+    <tr>
+      <td style="padding: 6px 22px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#1c1420" style="background-color: #1c1420; border: 1px solid #4a2a2a; border-left: 3px solid #d9534f;">
+          <tr><td style="padding: 12px 16px 12px 14px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr><td style="font-family: Consolas, 'Courier New', monospace; font-size: 11px; line-height: 15px; mso-line-height-rule: exactly; letter-spacing: 0.08em; color: #d9534f;"><span style="font-weight: 700;">&#9650; FINDING</span> &nbsp;&#183;&nbsp; HEARTBEAT &nbsp;&#183;&nbsp; {{NAME}}</td></tr>
+              <tr><td style="padding-top: 6px; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 17px; line-height: 23px; mso-line-height-rule: exactly; color: #e5e9f4;">{{LAST_BEAT}} &nbsp;<span style="font-family: Consolas, 'Courier New', monospace; font-size: 13px; color: #9aa5c3;">{{MISSED_COUNT}}</span></td></tr>
+              <tr><td style="padding-top: 5px; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 15px; line-height: 21px; mso-line-height-rule: exactly; color: #9aa5c3;">This surface did not report. Treat its subject area as unverified until it beats again.</td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </td>
+    </tr>
+<!-- END:SILENCE_CARD -->
+
+<!-- BEGIN:TODAY -->
+    <tr>
+      <td bgcolor="#0b0e18" style="background-color: #0b0e18; padding: 22px 22px 6px; font-family: Consolas, 'Courier New', monospace; font-size: 11px; line-height: 15px; mso-line-height-rule: exactly; letter-spacing: 0.1em; color: #5c86d6;">TODAY &nbsp;&#183;&nbsp; {{TODAY_COUNT}}</td>
+    </tr>
+{{TODAY_CARDS}}
+<!-- END:TODAY -->
+
+<!-- BEGIN:RAN_CLEAN -->
+    <tr>
+      <td bgcolor="#0b0e18" style="background-color: #0b0e18; padding: 22px 22px 8px; font-family: Consolas, 'Courier New', monospace; font-size: 11px; line-height: 15px; mso-line-height-rule: exactly; letter-spacing: 0.1em; color: #5e6884;">RAN CLEAN &nbsp;&#183;&nbsp; NO ACTION NEEDED</td>
+    </tr>
+    <tr>
+      <td style="padding: 0 22px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#161b2e" style="background-color: #161b2e; border: 1px solid #242d4c;">
+{{RAN_CLEAN_ROWS}}
+        </table>
+      </td>
+    </tr>
+<!-- END:RAN_CLEAN -->
+
+<!-- BEGIN:RAN_CLEAN_ROW -->
+          <tr>
+            <td style="padding: 10px 14px; {{ROW_BORDER}}font-family: Consolas, 'Courier New', monospace; font-size: 13px; line-height: 20px; mso-line-height-rule: exactly; color: #e5e9f4;">{{NAME}}</td>
+            <td align="right" style="padding: 10px 14px; {{ROW_BORDER}}font-family: Consolas, 'Courier New', monospace; font-size: 12px; line-height: 20px; mso-line-height-rule: exactly; color: #9aa5c3;">{{MEASURE}}</td>
+            <td align="right" width="96" style="padding: 10px 14px; {{ROW_BORDER}}font-family: Consolas, 'Courier New', monospace; font-size: 11px; line-height: 20px; mso-line-height-rule: exactly; letter-spacing: 0.06em; font-weight: 700; color: {{STATE_COLOR}}; white-space: nowrap;">{{STATE_GLYPH}} {{STATE_WORD}}</td>
+          </tr>
+<!-- END:RAN_CLEAN_ROW -->
+
+<!-- BEGIN:WINDOW -->
+    <tr>
+      <td bgcolor="#0b0e18" style="background-color: #0b0e18; padding: 22px 22px 8px; font-family: Consolas, 'Courier New', monospace; font-size: 11px; line-height: 15px; mso-line-height-rule: exactly; letter-spacing: 0.1em; color: #5e6884;">THE WINDOW &nbsp;&#183;&nbsp; DARK ARC</td>
+    </tr>
+    <tr>
+      <td style="padding: 0 22px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#0a0c14" style="background-color: #0a0c14; border: 1px solid #242d4c;">
+          <tr><td style="padding: 12px 14px; font-family: Consolas, 'Courier New', monospace; font-size: 12px; line-height: 20px; mso-line-height-rule: exactly; color: #9aa5c3;">{{WINDOW_LINES}}</td></tr>
+        </table>
+      </td>
+    </tr>
+<!-- END:WINDOW -->
+
+    <tr>
+      <td style="padding: 14px 22px 18px; font-family: Consolas, 'Courier New', monospace; font-size: 12px; line-height: 17px; mso-line-height-rule: exactly;"><a href="{{HOME_HREF}}" style="color: #00c8a0; text-decoration: none;">HOME &#8594;</a></td>
+    </tr>
+
+    <tr>
+      <td bgcolor="#111524" style="background-color: #111524; padding: 16px 22px 18px; border-top: 1px solid #242d4c; font-family: Consolas, 'Courier New', monospace; font-size: 12px; line-height: 18px; mso-line-height-rule: exactly; color: #5e6884;">
+        <span style="color: #9aa5c3;">custody:</span> operator, since {{BUILT_TIME}} &nbsp;&#183;&nbsp; <span style="color: #9aa5c3;">vault:</span> {{VAULT_NAME}}<br>
+        {{CUSTODY_WINDOW}}generated in the vault by build-dawn-report.ps1. email is optional. no tracking bits.
+      </td>
+    </tr>
+
+    <tr>
+      <td bgcolor="#0a0c14" style="background-color: #0a0c14; padding: 12px 22px 16px; border-top: 1px solid #242d4c; font-family: Consolas, 'Courier New', monospace; font-size: 10px; line-height: 15px; mso-line-height-rule: exactly; color: #5e6884;">
+        MACHINE READ &nbsp;&#183;&nbsp; canonical action-item summary as JSON<br>
+        <span style="word-break: break-all; overflow-wrap: anywhere;">{{MACHINE_JSON}}</span>
+      </td>
+    </tr>
+
+  </table>
+</td>
+</tr>
+</table>
+</body>
+</html>
