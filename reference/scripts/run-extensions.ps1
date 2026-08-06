@@ -3,7 +3,7 @@
 .SYNOPSIS
   Discover and run every _meta/extensions/*/check.ps1 (spec §Extension surface).
 .DESCRIPTION
-  Generic aggregator — adding an extension requires no change to this script or
+  Generic aggregator - adding an extension requires no change to this script or
   to any other extension. Each extension is invoked with -Root -DryRun and must
   emit one `EXTENSION-STATUS name=<name> flagged=<true|false>` line; everything
   above that line is passed through as human-readable detail. Extensions never
@@ -11,7 +11,7 @@
   line is reported as its own flagged finding, not a script failure.
 
   Intended as a heartbeat step in the nightly automation chain, alongside (not
-  instead of) any loop-cell runs — extensions are layer-2 automation-chain
+  instead of) any loop-cell runs - extensions are layer-2 automation-chain
   checks, not layer-3 loop cells (spec §System architecture): read-only,
   flag-only, never gating, no LLM.
 .PARAMETER Root
@@ -27,35 +27,44 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $extDir = Join-Path $Root '_meta/extensions'
+$logDir = Join-Path $Root '_meta/logs'
+if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
+$logFile = Join-Path $logDir ("extensions-{0}.log" -f (Get-Date -Format 'yyyy-MM-dd'))
+function Write-RunOutput {
+  param([string]$Message)
+  Write-Host $Message
+  Add-Content -Path $logFile -Value $Message -Encoding UTF8
+}
+
 if (-not (Test-Path $extDir)) {
-  Write-Host "STATUS extensions=0 flagged=0 (no _meta/extensions/ present)"
+  Write-RunOutput "STATUS extensions=0 flagged=0 (no _meta/extensions/ present)"
   exit 0
 }
 
 $dirs = @(Get-ChildItem -Path $extDir -Directory | Sort-Object Name)
 if ($dirs.Count -eq 0) {
-  Write-Host "STATUS extensions=0 flagged=0 (no extensions registered)"
+  Write-RunOutput "STATUS extensions=0 flagged=0 (no extensions registered)"
   exit 0
 }
 
 $flaggedNames = New-Object System.Collections.Generic.List[string]
 foreach ($d in $dirs) {
   $check = Join-Path $d.FullName 'check.ps1'
-  Write-Host "extension> $($d.Name)"
+  Write-RunOutput "extension> $($d.Name)"
   if (-not (Test-Path $check)) {
-    Write-Host "extension> $($d.Name): MISSING check.ps1 — treated as flagged"
+    Write-RunOutput "extension> $($d.Name): MISSING check.ps1 - treated as flagged"
     $flaggedNames.Add($d.Name); continue
   }
   try {
     $out = & $check -Root $Root -DryRun *>&1 | ForEach-Object { "$_" }
   } catch {
-    Write-Host "extension> $($d.Name): threw — $($_.Exception.Message) — treated as flagged"
+    Write-RunOutput "extension> $($d.Name): threw - $($_.Exception.Message) - treated as flagged"
     $flaggedNames.Add($d.Name); continue
   }
-  foreach ($l in $out) { Write-Host ("extension> " + $l) }
+  foreach ($l in $out) { Write-RunOutput ("extension> " + $l) }
   $statusLine = $out | Where-Object { $_ -match '^EXTENSION-STATUS\s+name=(\S+)\s+flagged=(true|false)' } | Select-Object -Last 1
   if (-not $statusLine) {
-    Write-Host "extension> $($d.Name): no EXTENSION-STATUS line emitted — treated as flagged (non-conformant)"
+    Write-RunOutput "extension> $($d.Name): no EXTENSION-STATUS line emitted - treated as flagged (non-conformant)"
     $flaggedNames.Add($d.Name); continue
   }
   if ($Matches[2] -eq 'true') { $flaggedNames.Add($Matches[1]) }
@@ -63,4 +72,4 @@ foreach ($d in $dirs) {
 
 $statusLine = "STATUS extensions={0} flagged={1}" -f $dirs.Count, $flaggedNames.Count
 if ($flaggedNames.Count -gt 0) { $statusLine += " [" + ($flaggedNames -join ',') + "]" }
-Write-Host $statusLine
+Write-RunOutput $statusLine
