@@ -5,8 +5,15 @@
 # (spec §Extension surface). Safe on a fresh install with zero configuration.
 50 2 * * * /usr/bin/pwsh -NoProfile -File $VAULT_ROOT/_meta/scripts/run-extensions.ps1 -Root $VAULT_ROOT >> $VAULT_ROOT/_meta/logs/extensions-cron.log 2>&1
 
-# The loop layer is commented out by default — it ships inert
+# The loop layer is commented out by default - it ships inert
 # (_meta/loops/wrap-tail-repair.yaml.example) until you configure a real
 # endpoint chain. Once you've renamed it to wrap-tail-repair.yaml and edited
 # in your own model/endpoint, uncomment the line below.
 # 0 3 * * * /usr/bin/pwsh -NoProfile -File $VAULT_ROOT/_meta/scripts/run-loop.ps1 -Manifest $VAULT_ROOT/_meta/loops/wrap-tail-repair.yaml -Root $VAULT_ROOT >> $VAULT_ROOT/_meta/logs/loop-cron.log 2>&1
+
+# The dawn report is opt-in, like delivery itself. Uncomment to build the HTML
+# and plain-text evidence at the dawn crossing. If the external config is not
+# mounted, the sender exits cleanly in file-only mode. The loop layer may stay
+# inert; any active loop manifest is discovered and reported automatically.
+# See reference/docker/README.md for guided setup and the read-only config mount.
+# 30 3 * * * /usr/bin/pwsh -NoProfile -File $VAULT_ROOT/_meta/scripts/send-dawn-report-email.ps1 -Root $VAULT_ROOT -ConfigPath /run/secrets/system-o-dawn-email.json >> $VAULT_ROOT/_meta/logs/dawn-cron.log 2>&1
