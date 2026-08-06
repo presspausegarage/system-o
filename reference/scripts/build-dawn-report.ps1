@@ -179,7 +179,7 @@ foreach ($surface in $surfaces) {
       }
       $silence.Add([pscustomobject]@{ Name = $status.Name; LastBeat = $surface.LastBeat; Missed = $missed })
     }
-    { $_ -in @('clean', 'applied') } {
+    { $_ -in @('clean', 'applied', 'skipped') } {
       $cleanRows.Add([pscustomobject]@{ Name = $status.Name; Measure = $status.Detail; StateKey = $status.State })
     }
     default {
@@ -275,7 +275,8 @@ $countsHtml = if ($countParts.Count -gt 0) { $countParts -join ' &nbsp;&#183;&nb
 $subject = if ($verdictKey -eq 'incomplete') {
   'dawn: the chain did not run'
 } elseif ($silenceCount -gt 0) {
-  "dawn: $($silence[0].Name) went quiet$(if (($findingCount + $silenceCount) -gt 1) { " and $($findingCount + $silenceCount - 1) more findings" })"
+  $alsoCount = $findingCount + $silenceCount - 1
+  "dawn: $($silence[0].Name) went quiet$(if ($alsoCount -gt 0) { " and $alsoCount more finding$(if ($alsoCount -ne 1) { 's' })" })"
 } elseif ($findingCount -gt 0) {
   "dawn: $($needsYou[0].Source.ToLowerInvariant()) raised a finding"
 } elseif ($heldCount -gt 0) {

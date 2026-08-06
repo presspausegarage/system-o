@@ -20,7 +20,9 @@
     6. run-extensions.ps1 exits 0 with a well-formed STATUS line
     7. build-static-home.ps1 / build-kanban-csv.ps1 run clean
     8. Dawn report writes HTML plus plain-text evidence, exercises CLEAN,
-       HELD, ATTENTION, and INCOMPLETE, degrades honestly without email, and
+       HELD, ATTENTION, and INCOMPLETE, reports a dry run as SKIPPED rather
+       than APPLIED, degrades honestly with no email config and with an
+       undecryptable one, refuses a config stored inside the vault, and
        declines setup cleanly in non-interactive mode.
     9. Loop layer full circle via the stub driver (spec §Measured conformance's
        conformance vehicle, REQUIRED per D6, not optional): a seeded
@@ -388,14 +390,51 @@ function Test-DawnReport {
   $incompleteHtml = if (Test-Path $incompleteHtmlPath) { Get-Content -Path $incompleteHtmlPath -Raw -Encoding UTF8 } else { '' }
   Record 'dawn: INCOMPLETE verdict and silence cards exercise missing beats' ($LASTEXITCODE -eq 0 -and $incompleteHtml -match ' INCOMPLETE</td>' -and $incompleteHtml -match 'SILENCE') $incompleteOut.Trim()
 
+  # SKIPPED: a dry run counts what it would have removed. Reporting that as
+  # applied would put a false statement in the evidence artifact.
+  '[02:15:01] purge-sewerpipe: done. deleted=3 total=1.5MB dry-run=True' |
+    Set-Content -Path (Join-Path $logsDir "purge-sewerpipe-$today.log") -Encoding UTF8
+  $skipOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'build-dawn-report.ps1') -Root $VaultRoot -Date $today 2>&1 | Out-String
+  $skipHtml = Get-Content -Path $htmlPath -Raw -Encoding UTF8
+  Record 'dawn: a dry-run purge reports SKIPPED, never APPLIED' ($LASTEXITCODE -eq 0 -and $skipHtml -match ' SKIPPED</td>' -and $skipHtml -match 'would-delete=3' -and $skipHtml -notmatch 'deleted=3') $skipOut.Trim()
+  '[02:15:01] purge-sewerpipe: done. deleted=0 total=0MB dry-run=False' |
+    Set-Content -Path (Join-Path $logsDir "purge-sewerpipe-$today.log") -Encoding UTF8
+
   # Reset clean input, then verify delivery degrades honestly without config.
+  # The config path deliberately sits outside the vault: an in-vault path is a
+  # refusal, asserted separately below.
   'STATUS extensions=3 flagged=0' |
     Set-Content -Path (Join-Path $logsDir "extensions-$today.log") -Encoding UTF8
-  $missingConfig = Join-Path $VaultRoot '_meta/nonexistent-dawn-email.json'
-  $degradeOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'send-dawn-report-email.ps1') -Root $VaultRoot -Date $today -ConfigPath $missingConfig 2>&1 | Out-String
-  Record 'dawn: unconfigured email degrades cleanly to file-only mode' ($LASTEXITCODE -eq 0 -and $degradeOut -match 'delivery=file-only reason=unconfigured') $degradeOut.Trim()
-  $noSendOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'send-dawn-report-email.ps1') -Root $VaultRoot -Date $today -ConfigPath $missingConfig -NoSend 2>&1 | Out-String
-  Record 'dawn: -NoSend builds evidence without reading secrets' ($LASTEXITCODE -eq 0 -and $noSendOut -match 'delivery=file-only reason=no-send') $noSendOut.Trim()
+  $configDir = Join-Path ([System.IO.Path]::GetTempPath()) ("system-o-dawn-cfg-" + [guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+  try {
+    $missingConfig = Join-Path $configDir 'nonexistent-dawn-email.json'
+    $degradeOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'send-dawn-report-email.ps1') -Root $VaultRoot -Date $today -ConfigPath $missingConfig 2>&1 | Out-String
+    Record 'dawn: unconfigured email degrades cleanly to file-only mode' ($LASTEXITCODE -eq 0 -and $degradeOut -match 'delivery=file-only reason=unconfigured') $degradeOut.Trim()
+    $noSendOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'send-dawn-report-email.ps1') -Root $VaultRoot -Date $today -ConfigPath $missingConfig -NoSend 2>&1 | Out-String
+    Record 'dawn: -NoSend builds evidence without reading secrets' ($LASTEXITCODE -eq 0 -and $noSendOut -match 'delivery=file-only reason=no-send') $noSendOut.Trim()
+
+    # Credential material this account cannot use: a DPAPI blob written by
+    # another Windows account, or a DPAPI config read anywhere off Windows.
+    # Both are unusable, not a broken vault, so delivery degrades and the run
+    # stays clean instead of dying on an opaque crypto error.
+    $foreignConfig = Join-Path $configDir 'foreign-dpapi-dawn-email.json'
+    '{"version":1,"host":"smtp.example.com","port":587,"user":"dawn@example.com","recipient":"dawn@example.com","from":"dawn@example.com","enable_ssl":true,"storage":"dpapi-current-user","password_protected":"01000000d08c9ddf0115d1118c7a00c04fc297eb0000000000000000"}' |
+      Set-Content -Path $foreignConfig -Encoding UTF8
+    $unreadableOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'send-dawn-report-email.ps1') -Root $VaultRoot -Date $today -ConfigPath $foreignConfig 2>&1 | Out-String
+    Record 'dawn: undecryptable email config degrades instead of crashing' ($LASTEXITCODE -eq 0 -and $unreadableOut -match 'delivery=file-only reason=config-unreadable') $unreadableOut.Trim()
+  } finally {
+    Remove-Item -Path $configDir -Recurse -Force -ErrorAction SilentlyContinue
+  }
+
+  # The wizard refuses to write credentials into the vault; the sender must
+  # refuse to read them back out of one.
+  $inVaultConfig = Join-Path $VaultRoot '_meta/dawn-email.json'
+  '{"version":1,"host":"smtp.example.com","port":587,"user":"dawn@example.com","recipient":"dawn@example.com","from":"dawn@example.com","enable_ssl":true,"storage":"unix-0600","password":"plaintext-should-never-be-read"}' |
+    Set-Content -Path $inVaultConfig -Encoding UTF8
+  $inVaultOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'send-dawn-report-email.ps1') -Root $VaultRoot -Date $today -ConfigPath $inVaultConfig 2>&1 | Out-String
+  Record 'dawn: sender refuses an email config inside the vault' ($LASTEXITCODE -ne 0 -and $inVaultOut -match 'Refusing to read email credentials from inside the vault' -and $inVaultOut -notmatch 'plaintext-should-never-be-read') $inVaultOut.Trim()
+  Remove-Item -Path $inVaultConfig -Force
 
 
   $declinePath = Join-Path $VaultRoot '_meta/should-not-exist-email.json'

@@ -8,6 +8,10 @@
   current-user DPAPI. Unix stores it in a mode-0600 file, suitable for a
   root-owned Docker secret mount. A test message verifies the settings.
 
+  DPAPI is current-user scoped: run this under the same account that runs the
+  schedule. A config written interactively cannot be decrypted by a service
+  account, and the sender degrades to file-only when that happens.
+
   Environment-only configuration is also supported by the sender. Set
   SYSTEM_O_SMTP_HOST, SYSTEM_O_SMTP_PORT, SYSTEM_O_SMTP_USER,
   SYSTEM_O_SMTP_PASSWORD, SYSTEM_O_SMTP_RECIPIENT, and optional
@@ -107,7 +111,7 @@ if ($SkipTest) {
   exit 0
 }
 
-$settings = Get-DawnEmailSettings -ConfigPath $path
+$settings = Get-DawnEmailSettings -ConfigPath $path -Root $Root
 $testSubject = 'system-o dawn email test'
 $testPlain = "system-o dawn email is configured.`r`n`r`nNo vault content is included in this test."
 $testHtml = '<!DOCTYPE html><html><body style="font-family: Arial, sans-serif;"><p><strong>system-o dawn email is configured.</strong></p><p>No vault content is included in this test.</p></body></html>'

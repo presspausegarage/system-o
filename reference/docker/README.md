@@ -70,6 +70,13 @@ Its default external config location is the current user's application-data
 folder, and the password is protected with current-user DPAPI. `-NonInteractive`
 is a clean no-op for automation. `-SkipTest` saves without the closing test.
 
+DPAPI is scoped to the account that wrote it. Run setup under the same account
+that runs the schedule: a config written interactively cannot be decrypted by a
+service account such as SYSTEM. When that happens the sender reports
+`delivery=file-only reason=config-unreadable` and exits clean rather than
+failing the whole run, so the evidence still lands. A config path inside the
+vault is refused on read as well as on write.
+
 
 ## Startup contract
 
