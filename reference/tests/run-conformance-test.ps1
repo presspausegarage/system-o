@@ -13,26 +13,28 @@
     1. Locked taxonomy present (spec §File & folder taxonomy + §Agent context
        bundle's _meta/agent-context/ extension)
     2. Exactly one orientation file (spec §Agent orientation files)
-    3. GLOSSARY.md / agent-context MEMORY.md / session-log.md / HOME.md present
-    4. Idempotent re-bootstrap - a second run must not touch existing content
-    5. run-extensions.ps1 exits 0 with a well-formed STATUS line
-    6. build-static-home.ps1 / build-kanban-csv.ps1 run clean
-    7. Dawn report writes HTML plus plain-text evidence, exercises CLEAN,
+    3. Starter orientation and Stage-2 prompt carry the locked vault-mutation
+       fail-closed rule (spec §Vault mutation safety)
+    4. GLOSSARY.md / agent-context MEMORY.md / session-log.md / HOME.md present
+    5. Idempotent re-bootstrap - a second run must not touch existing content
+    6. run-extensions.ps1 exits 0 with a well-formed STATUS line
+    7. build-static-home.ps1 / build-kanban-csv.ps1 run clean
+    8. Dawn report writes HTML plus plain-text evidence, exercises CLEAN,
        HELD, ATTENTION, and INCOMPLETE, degrades honestly without email, and
        declines setup cleanly in non-interactive mode.
-    8. Loop layer full circle via the stub driver (spec §Measured conformance's
+    9. Loop layer full circle via the stub driver (spec §Measured conformance's
        conformance vehicle, REQUIRED per D6, not optional): a seeded
        session-log gap + stale HOME is detected, proposed via a canned stub
        endpoint, verified, auto-applied, HOME cascades, and the detector
        self-clears on the next pass.
-    9. Second-loop full circle (the v2 runner-seam proof): the shipped
+    10. Second-loop full circle (the v2 runner-seam proof): the shipped
        kanban-handoff-reconciler cell - different detector, verifier id, and
        repair types - runs through the same generic runner from a manifest +
        cell script alone: seeded D1 (ready handoff, citing cards all checked)
        and D2 (complete handoff citing an open task) drift is detected,
        proposed propose-only via the stub endpoint, applied through
        apply-loop-proposal.ps1, and the detector self-clears.
-    10. (docker only) crontab installed with $VAULT_ROOT substituted
+    11. (docker only) crontab installed with $VAULT_ROOT substituted
 
   Exits 0 only if every check passes; nonzero otherwise. Human-readable
   PASS/FAIL lines to stdout plus a summary report file.
@@ -415,6 +417,19 @@ function Test-Vault {
 
   $orientCandidates = @(@('CLAUDE.md', 'AGENTS.md') | Where-Object { Test-Path (Join-Path $VaultRoot $_) })
   Record 'exactly one orientation file, matching -AgentTarget' ($orientCandidates.Count -eq 1 -and $orientCandidates[0] -eq $AgentTarget) ("expected: $AgentTarget; found: " + ($orientCandidates -join ', '))
+
+  $orientPath = Join-Path $VaultRoot $AgentTarget
+  $orientText = if (Test-Path $orientPath) { Get-Content -Path $orientPath -Raw } else { '' }
+  $orientationHasMutationRule = $orientText -match 'Mutation safety:' -and
+    $orientText -match 'scoped, preconditioned patches' -and
+    $orientText -match 'target untouched'
+  Record 'orientation carries vault-mutation fail-closed rule' $orientationHasMutationRule
+
+  $stage2Path = Join-Path $VaultRoot '_meta/templates/stage-2-onboarding.prompt.md'
+  $stage2Text = if (Test-Path $stage2Path) { Get-Content -Path $stage2Path -Raw } else { '' }
+  $stage2PreservesMutationRule = $stage2Text -match 'Never replace an existing vault file wholesale' -and
+    $stage2Text -match 'leave the target untouched' -and $stage2Text -match 'preserve the vault-mutation safety rule'
+  Record 'Stage-2 onboarding preserves vault-mutation safety' $stage2PreservesMutationRule
 
   Record 'GLOSSARY.md present' (Test-Path (Join-Path $VaultRoot '_meta/GLOSSARY.md'))
   Record 'agent-context/MEMORY.md present' (Test-Path (Join-Path $VaultRoot '_meta/agent-context/MEMORY.md'))

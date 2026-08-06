@@ -15,14 +15,16 @@ If you find an ambiguity, surface it as a short, concrete question - multiple-ch
 
 ## What NOT to touch
 
+Vault mutation safety is spec-locked. Change existing vault files only through scoped edits that verify their expected old context. Never replace an existing vault file wholesale as a fallback. If a patch or precondition cannot be verified, leave the target untouched, report the blocker, and ask the operator how to proceed.
+
 Stage 2 fills in *this operator's* answers. It does not relitigate anything spec-locked (§System architecture's layers, the loop-cell pattern, manifest schemas, the locked half of §File & folder taxonomy). If something looks wrong at the spec level, say so and stop - that's a spec bug report, not a Stage-2 edit.
 
 ## What to produce
 
-1. `_meta/GLOSSARY.md` - real terms with real definitions specific to this vault, replacing the empty starter table. Terms should be the vocabulary this vault's own conventions, scripts, and prompts assume a reader already knows (per the file's own header).
-2. The orientation file (`CLAUDE.md` or `AGENTS.md`) - prose specific to this workspace: what it's for, its conventions, how an agent should work here - replacing the generic Stage-1 boilerplate.
+1. `_meta/GLOSSARY.md` - real terms with real definitions specific to this vault, replacing the empty starter rows through scoped, preconditioned edits. Terms should be the vocabulary this vault's own conventions, scripts, and prompts assume a reader already knows (per the file's own header).
+2. The orientation file (`CLAUDE.md` or `AGENTS.md`) - prose specific to this workspace: what it's for, its conventions, how an agent should work here. Refine the generic Stage-1 sections through scoped, preconditioned edits and preserve the vault-mutation safety rule.
 3. A record that Stage 2 ran and what it resolved: append a session-log entry per this vault's own convention if one exists, or otherwise note completion in a form the operator can find later. Don't invent a new logging convention if the loop layer (`_meta/loops/`) already owns this - check first.
 
 ## Exit criteria
 
-Stage 2 is done when: no placeholder text remains in the glossary or orientation file, every ambiguity you found was either confirmed by the operator or explicitly deferred with a note (not silently guessed), and the record in step 3 exists. If you deferred anything, say so plainly rather than letting it look resolved.
+Stage 2 is done when: no placeholder text remains in the glossary or orientation file, the orientation file still contains the vault-mutation fail-closed rule, every ambiguity you found was either confirmed by the operator or explicitly deferred with a note (not silently guessed), and the record in step 3 exists. If you deferred anything, say so plainly rather than letting it look resolved.
