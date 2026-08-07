@@ -109,13 +109,25 @@ function New-DawnCard {
   }
 }
 
-# Gather the fixed layer-2 reference surfaces.
-$surfaceSpecs = @(
-  [pscustomobject]@{ Name = 'triage-inbox'; Type = 'triage'; Prefix = 'triage'; LogPath = (Join-Path $logsDir "triage-$Date.log") }
-  [pscustomobject]@{ Name = 'purge-sewerpipe'; Type = 'purge'; Prefix = 'purge-sewerpipe'; LogPath = (Join-Path $logsDir "purge-sewerpipe-$Date.log") }
-  [pscustomobject]@{ Name = 'sweep-handoffs'; Type = 'sweep'; Prefix = 'sweep-handoffs'; LogPath = (Join-Path $logsDir "sweep-handoffs-$Date.log") }
-  [pscustomobject]@{ Name = 'extensions'; Type = 'extensions'; Prefix = 'extensions'; LogPath = (Join-Path $logsDir "extensions-$Date.log") }
-)
+# Layer-2 surfaces are declared, never inferred: silence is only detectable
+# for a surface something said should exist (spec §Automation chain manifest).
+# A vault with no manifest falls back to the shipped chain, so an existing
+# install keeps working; an adopter's own nightly work earns the same silence
+# detection by adding an entry.
+$chainManifestPath = Join-Path $Root '_meta/chain.yaml'
+$chainEntries = @()
+if (Test-Path $chainManifestPath) { $chainEntries = @(Read-DawnChainManifest -Path $chainManifestPath) }
+if ($chainEntries.Count -eq 0) {
+  $chainEntries = @(
+    [pscustomobject]@{ Task = 'triage-inbox'; Log = 'triage'; Parser = 'triage' }
+    [pscustomobject]@{ Task = 'purge-sewerpipe'; Log = 'purge-sewerpipe'; Parser = 'purge' }
+    [pscustomobject]@{ Task = 'sweep-handoffs'; Log = 'sweep-handoffs'; Parser = 'sweep' }
+    [pscustomobject]@{ Task = 'extensions'; Log = 'extensions'; Parser = 'extensions' }
+  )
+}
+$surfaceSpecs = @($chainEntries | ForEach-Object {
+  [pscustomobject]@{ Name = $_.Task; Type = $_.Parser; Prefix = $_.Log; LogPath = (Join-Path $logsDir "$($_.Log)-$Date.log") }
+})
 
 # Each active loop manifest is another registered heartbeat. Example manifests
 # end in .yaml.example and remain inert, so they are not discovered here.

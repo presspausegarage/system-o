@@ -177,6 +177,41 @@ _Stage-2 onboarding (an agent-guided pass) should refine the placeholder section
     Copy-Item -Path $exampleManifest.FullName -Destination (Join-Path $VaultRoot ("_meta/loops/{0}.yaml.example" -f $loopBase)) -Force
   }
 
+  # Starter chain manifest (spec §Automation chain manifest). Declares which
+  # layer-2 surfaces the dawn report expects a heartbeat from, so a task that
+  # does not run is silence rather than an absence nobody notices. Add your own
+  # nightly work here to give it the same detection.
+  $chainFile = Join-Path $VaultRoot '_meta/chain.yaml'
+  if (-not (Test-Path $chainFile)) {
+    @"
+# Layer-2 automation chain surfaces (spec §Automation chain manifest).
+# A declared surface with no evidence for the report date is SILENCE, not an
+# absence. Delete an entry only when you have genuinely stopped running it.
+#
+#   task:   surface name, as it appears in the dawn report
+#   log:    _meta/logs/<log>-<date>.log basename; defaults to the task name
+#   parser: how to read that log. Built in: triage, purge, sweep, extensions.
+#           Anything else uses 'heartbeat' - the log existing IS the beat, and
+#           a STATUS line, if the task emits one, becomes the detail.
+#
+# The loop layer is NOT listed here: active loop manifests in _meta/loops/ are
+# discovered automatically and get silence detection for free.
+chain:
+  - task: triage-inbox
+    log: triage
+    parser: triage
+  - task: purge-sewerpipe
+    log: purge-sewerpipe
+    parser: purge
+  - task: sweep-handoffs
+    log: sweep-handoffs
+    parser: sweep
+  - task: extensions
+    log: extensions
+    parser: extensions
+"@ | Set-Content -Path $chainFile -Encoding UTF8
+  }
+
   # Starter session-log.md — written LAST: it is the install-complete sentinel,
   # so nothing above may run after it exists. Do not move this write earlier.
   @"
