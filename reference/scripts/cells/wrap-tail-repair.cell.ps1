@@ -5,9 +5,9 @@
   the cell contract). Dot-sourced by run-loop.ps1 and apply-loop-proposal.ps1.
 .DESCRIPTION
   Loop-specific pieces extracted from the v1 monolithic runner/applier
-  (2026-07-22, system-o v0.3.0 seam refactor — behavior-preserving port):
+  (2026-07-22, system-o v0.3.0 seam refactor - behavior-preserving port):
     adapter   parses the wrap-tail detector's dry-run contract line (detect-wrap-tail.ps1 in this reference)
-    verifier  'structural' — session-log entry shape (format, date, handoff
+    verifier  'structural' - session-log entry shape (format, date, handoff
               wikilink, single header, bullet tail, no fence)
     repairs   prepend-session-log-entry (LLM-drafted, dupe-guarded insert)
               bump-home-updated (deterministic, newest-entry-at-apply-time)
@@ -62,12 +62,12 @@ function Get-LoopFindings {
   foreach ($g in $gaps) {
     # per-handoff gaps arrive as handoff BASENAMES (2026-07-03); commit-only dates arrive marked
     if ($g -like 'commit-only:*') {
-      [void]$findings.Add(@{ change = 'prepend-session-log-entry'; target = '_meta/session-log.md'; fields = [ordered]@{}; summary = "gap $g"; skip = 'commit-only date — needs a human-drafted entry'; needs_llm = $true })
+      [void]$findings.Add(@{ change = 'prepend-session-log-entry'; target = '_meta/session-log.md'; fields = [ordered]@{}; summary = "gap $g"; skip = 'commit-only date - needs a human-drafted entry'; needs_llm = $true })
       continue
     }
     $hBase = $g
     $d = $g.Substring(0, 10)
-    # source THIS handoff exactly (active first, then archive) — no first-sorted pick
+    # source THIS handoff exactly (active first, then archive) - no first-sorted pick
     $handoff = @(Get-ChildItem -Path (Join-Path $Root '_meta/handoffs') -Filter "$hBase.md" -File -ErrorAction SilentlyContinue)
     if ($handoff.Count -eq 0) {
       $handoff = @(Get-ChildItem -Path (Join-Path $Root '_archive/handoffs') -Filter "$hBase.md" -File -Recurse -ErrorAction SilentlyContinue)
@@ -95,10 +95,10 @@ function Get-LoopFindings {
     [void]$findings.Add((New-HomeBumpFinding -Summary 'home-stale'))
   }
 
-  return $findings.ToArray()   # cells emit items; the runner collects with @() — no comma-wrap
+  return $findings.ToArray()   # cells emit items; the runner collects with @() - no comma-wrap
 }
 
-function Test-LoopDraft {   # 'structural' verifier — returns failure reasons (empty = pass)
+function Test-LoopDraft {   # 'structural' verifier - returns failure reasons (empty = pass)
   param([hashtable]$Finding, [string]$Draft, [string]$Root)
   $Date = [string]$Finding.fields['entry_date']
   $HandoffBase = [string]$Finding.fields['handoff']
@@ -142,7 +142,7 @@ function Invoke-LoopRepair {
         }
       }
       if ($insertAt -lt 0) { $insertAt = if ($firstEntry -ge 0 -and -not $entryDate) { $firstEntry } else { $lines.Count } }
-      # bounds-safe slicing: insertAt may be 0 (top) or $lines.Count (append) — a raw
+      # bounds-safe slicing: insertAt may be 0 (top) or $lines.Count (append) - a raw
       # range would wrap/overrun under StrictMode (found by rehearsal 2026-07-03)
       $head = if ($insertAt -gt 0) { @($lines[0..($insertAt-1)]) } else { @() }
       $tail = if ($insertAt -lt $lines.Count) { @($lines[$insertAt..($lines.Count-1)]) } else { @() }
@@ -171,7 +171,7 @@ function Get-LoopCascadeFindings {
   param([array]$Applied, [string]$Root)
   # HOME bump co-emit: an entry auto-applied THIS run and dated newer than HOME's
   # detect-time stamp has just made HOME stale (co-emit fix, 2026-07-01). Deliberately
-  # NOT co-emitted for still-pending (propose-only) entries — the bump reads "newest at
+  # NOT co-emitted for still-pending (propose-only) entries - the bump reads "newest at
   # apply time", so applying it before the pending entry would recreate the staleness.
   if ($script:WrapTailHomeStale) { return @() }   # already offered in the main pass
   $maxDate = $null

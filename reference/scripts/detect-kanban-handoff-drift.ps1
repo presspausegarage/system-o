@@ -6,19 +6,19 @@
 .DESCRIPTION
   Two deterministic finding types (system-o v0.3.0 slice, grill decisions 1-3):
 
-  D1 ready-but-done — a `status: ready` handoff whose citing Kanban cards
-     (cards containing the handoff basename — the basename IS the stable ID)
+  D1 ready-but-done - a `status: ready` handoff whose citing Kanban cards
+     (cards containing the handoff basename - the basename IS the stable ID)
      are ALL checked `[x]`, with at least one such card. The handoff should
      flip complete. A ready handoff with zero Kanban mentions is NOT a finding
-     (out of the loop's reach by design — the human's to flip).
+     (out of the loop's reach by design - the human's to flip).
 
-  D2 cited-but-open — a `status: complete` handoff whose verification block
+  D2 cited-but-open - a `status: complete` handoff whose verification block
      carries a `task: "<kanban> -- <text> -- checked <date>"` citation whose
      cited task line is still `[ ]`. The box should be checked. (This is the
      lint's citation cross-check promoted from flag to repair; obsolete
      handoffs are exempt, matching the lint.)
 
-  Output contract (parsed by kanban-handoff-reconciler.cell.ps1) — one line
+  Output contract (parsed by kanban-handoff-reconciler.cell.ps1) - one line
   per item, ' :: ' separated, prefixed '[dry-run] ' under -DryRun:
     D1 ready-but-done: <basename>
     D1-card: <basename> :: <kanban-rel-path> :: <task line text>
@@ -49,7 +49,7 @@ $handoffDir = Join-Path $Root '_meta/handoffs'
 if (-not (Test-Path $handoffDir)) { Emit 'kanban-handoff drift: 0 ready-but-done, 0 cited-but-open'; exit 0 }
 
 # All Kanban boards outside archival/purge/vcs trees, read once. Separators are
-# normalized before the exclusion match — a literal backslash pattern silently
+# normalized before the exclusion match - a literal backslash pattern silently
 # never fires on a POSIX host (the bump-updated-field port bug, 2026-07-09).
 $kanbans = @(Get-ChildItem -Path $Root -Filter 'Kanban.md' -Recurse -File -ErrorAction SilentlyContinue |
   Where-Object { ($_.FullName -replace '\\','/') -notmatch '/(_archive|_sewerpipe|node_modules|\.git)/' })
@@ -84,7 +84,7 @@ foreach ($h in ($handoffs | Where-Object Status -eq 'ready')) {
     }
   }
   $uniq = @($cards | Sort-Object Kanban, Text -Unique)
-  if ($uniq.Count -eq 0) { continue }                       # out of reach — not a finding
+  if ($uniq.Count -eq 0) { continue }                       # out of reach - not a finding
   if (@($uniq | Where-Object State -eq ' ').Count -gt 0) { continue }   # work genuinely open
   $d1++
   Emit ("D1 ready-but-done: {0}" -f $h.Base)
@@ -97,9 +97,9 @@ foreach ($h in ($handoffs | Where-Object Status -eq 'complete')) {
   $raw = Get-Content -Path $h.Path -Raw -Encoding UTF8
   foreach ($m in [regex]::Matches($raw, '(?m)^\s*-\s*task\s*:\s*"?(.+?)"?\s*$')) {
     $parts = $m.Groups[1].Value -split '\s*--\s*'
-    if ($parts.Count -lt 2) { continue }                    # malformed — the lint's finding, not ours
+    if ($parts.Count -lt 2) { continue }                    # malformed - the lint's finding, not ours
     $kRel = ($parts[0].Trim()) -replace '\\','/'
-    if (-not $kanbanLines.ContainsKey($kRel)) { continue }  # missing kanban — the lint's finding
+    if (-not $kanbanLines.ContainsKey($kRel)) { continue }  # missing kanban - the lint's finding
     $frag = $parts[1].Trim()
     $esc = [regex]::Escape($frag)
     $openHit = $false

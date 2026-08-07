@@ -1,20 +1,20 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-  Generate a plain-CSV fallback view of every Kanban.md board — the same
+  Generate a plain-CSV fallback view of every Kanban.md board - the same
   core-without-any-editor principle build-static-home.ps1 applies to the
   registry (spec §System architecture layer 4), applied to Kanban boards.
 .DESCRIPTION
   Kanban boards in this vault are markdown (Obsidian's Kanban plugin format:
-  `## <Column>` headers, `- [ ]`/`- [x]` items beneath each) — readable as
+  `## <Column>` headers, `- [ ]`/`- [x]` items beneath each) - readable as
   plain text, but not as a structured table without a board-view tool. This
   writes a `Kanban.csv` next to every `Kanban.md` it finds, one row per task,
   openable in any spreadsheet app, VS Code's built-in CSV preview, or a text
-  editor — no extension, no plugin, no specific tool assumed.
+  editor - no extension, no plugin, no specific tool assumed.
 
   Parses top-level `## ColumnName` headers and top-level `- [ ] Task` /
   `- [x] Task` lines beneath them into Column/Done/Task rows. v1 scope,
-  stated plainly: captures each item's first line only (its card title) —
+  stated plainly: captures each item's first line only (its card title) -
   multi-line card bodies (indented continuation text some Kanban cards
   carry) are not captured in the CSV. That's the useful granularity for a
   fallback task list; the full card body still lives in the source
@@ -58,7 +58,7 @@ function Convert-KanbanToCsv {
   }
 
   if ($rows.Count -eq 0) {
-    Say "no task items found in $KanbanPath — skipped (no Kanban.csv written)"
+    Say "no task items found in $KanbanPath - skipped (no Kanban.csv written)"
     return
   }
   $rows | Export-Csv -Path $csvPath -NoTypeInformation -Encoding UTF8
@@ -74,4 +74,4 @@ if ($Path) {
 $found = @(Get-ChildItem -Path $Root -Filter 'Kanban.md' -Recurse -File -ErrorAction SilentlyContinue)
 if ($found.Count -eq 0) { Say "no Kanban.md files found under $Root"; exit 0 }
 foreach ($f in $found) { Convert-KanbanToCsv -KanbanPath $f.FullName }
-Say ("done — {0} Kanban.md file(s) processed" -f $found.Count)
+Say ("done - {0} Kanban.md file(s) processed" -f $found.Count)

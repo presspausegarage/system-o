@@ -1,18 +1,18 @@
 source: CLAUDE.md
 target: AGENTS.md
 
-# Token renames — longer/more-specific patterns first to prevent partial-overlap bugs.
+# Token renames - longer/more-specific patterns first to prevent partial-overlap bugs.
 renames:
   - { from: "Claude Code", to: "your agent harness" }
   - { from: "Claude",      to: "the agent" }
 
-# Path remappings — Claude-specific storage paths → portable equivalents.
+# Path remappings - Claude-specific storage paths → portable equivalents.
 paths:
   - { from: "~/.claude/projects/", to: "_meta/agent-context/projects/" }
   - { from: ".claude/agents/",     to: ".agent-context/agents/" }
   - { from: "CLAUDE.md",           to: "AGENTS.md" }
 
-# Section edits — remove or replace sections that are Claude-specific.
+# Section edits - remove or replace sections that are Claude-specific.
 # Deliberately minimal: only edit sections that demonstrably break or mislead
 # non-Claude agents. Let breakage data drive further trimming.
 sections:

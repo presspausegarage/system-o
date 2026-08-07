@@ -121,7 +121,7 @@ foreach ($f in $files) {
       } else {
         # Cross-check task: entries against their referenced Kanbans.
         # task: "<kanban-path relative to Root> -- <task text> -- checked <date>"
-        # Separator can be em-dash ("—") or double-hyphen ("--").
+        # Separator can be em-dash (" - ") or double-hyphen ("--").
         $verLines = @()
         $inVerBlock = $false
         foreach ($l in ($fm -split "`r?`n")) {
@@ -132,7 +132,10 @@ foreach ($f in $files) {
           }
         }
         $taskRe = '^\s*-\s*task\s*:\s*"?(.+?)"?\s*$'
-        $sepRe  = '\s+(?:[—]|--)\s+'
+        # Built from its codepoint rather than typed: this em dash is a parsed
+        # token in the session-log separator, so the literal has to survive the
+        # voice lint that bans em dashes from shipped copy.
+        $sepRe  = "\s+(?:[$([char]0x2014)]|--)\s+"
         foreach ($vl in $verLines) {
           if ($vl -notmatch $taskRe) { continue }
           $payload = $Matches[1]

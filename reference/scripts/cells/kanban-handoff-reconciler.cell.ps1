@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-  Cell script for the kanban-handoff-reconciler loop (loop #2 — the first
+  Cell script for the kanban-handoff-reconciler loop (loop #2 - the first
   materially different loop at the runner seam; see run-loop.ps1 .DESCRIPTION
   for the cell contract). Dot-sourced by run-loop.ps1 and
   apply-loop-proposal.ps1.
@@ -10,15 +10,15 @@
   link between them (spec section Loop manifest).
 
     adapter   parses detect-kanban-handoff-drift.ps1's contract lines
-    verifier  'status-sync' — structural check on the drafted completion note
+    verifier  'status-sync' - structural check on the drafted completion note
               (single line, length bounds, YAML-safe: no double quotes, no
               fences, no leading #, no ---)
-    repairs   complete-ready-handoff — replace the `status: ready` line with a
+    repairs   complete-ready-handoff - replace the `status: ready` line with a
               complete block (status/completed_date/completion_note/
               verification task: citations built from the ACTUAL matched
               cards, so the lint's cross-check passes by construction). The
               drafted note is the loop's one LLM box.
-              check-cited-task — flip `- [ ]` to `- [x]` on the cited task
+              check-cited-task - flip `- [ ]` to `- [x]` on the cited task
               line (deterministic; the lint's cited-but-open error promoted
               from flag to repair).
     cascade   none (a completed handoff creates no new finding in scope)
@@ -27,7 +27,7 @@
   travels in the proposal body inside a ```yaml fence (auditable in the human
   walk, applied verbatim by Invoke-LoopRepair).
 
-  `obsolete` is deliberately NOT a repair here — supersession is a judgment
+  `obsolete` is deliberately NOT a repair here - supersession is a judgment
   call; it belongs to judgment sweeps, never the mechanical loop.
 #>
 
@@ -135,10 +135,10 @@ function Get-LoopFindings {
     })
   }
 
-  return $findings.ToArray()   # cells emit items; the runner collects with @() — no comma-wrap
+  return $findings.ToArray()   # cells emit items; the runner collects with @() - no comma-wrap
 }
 
-function Test-LoopDraft {   # 'status-sync' verifier — the draft is ONE completion-note line
+function Test-LoopDraft {   # 'status-sync' verifier - the draft is ONE completion-note line
   param([hashtable]$Finding, [string]$Draft, [string]$Root)
   $reasons = [System.Collections.ArrayList]::new()
   $t = $Draft.Trim()
@@ -184,13 +184,13 @@ function Invoke-LoopRepair {
       if (-not $target) { $target = "_meta/handoffs/$($Fields['handoff']).md" }
       $path = Join-Path $Root $target
       if (-not (Test-Path $path)) { throw "Target handoff not found: $path" }
-      if ($Body -notmatch '(?s)```yaml\r?\n(.*?)\r?\n```') { throw 'Proposal body carries no ```yaml repair block — nothing to apply.' }
+      if ($Body -notmatch '(?s)```yaml\r?\n(.*?)\r?\n```') { throw 'Proposal body carries no ```yaml repair block - nothing to apply.' }
       $block = $Matches[1] -replace "`r`n","`n"
       $raw = (Get-Content -Path $path -Raw -Encoding UTF8) -replace "`r`n","`n"
       if ($raw -match '(?m)^status:\s*complete\s*$') { throw "Already applied: $target reads status: complete" }
       $rawLines = $raw -split "`n"
       $idx = @(0..($rawLines.Count - 1) | Where-Object { $rawLines[$_] -match '^status: ready\s*$' })
-      if ($idx.Count -ne 1) { throw "Expected exactly one 'status: ready' line in ${target}, found $($idx.Count) — refusing" }
+      if ($idx.Count -ne 1) { throw "Expected exactly one 'status: ready' line in ${target}, found $($idx.Count) - refusing" }
       $i = $idx[0]
       $head = if ($i -gt 0) { @($rawLines[0..($i - 1)]) } else { @() }
       $tail = if ($i -lt ($rawLines.Count - 1)) { @($rawLines[($i + 1)..($rawLines.Count - 1)]) } else { @() }
@@ -214,7 +214,7 @@ function Invoke-LoopRepair {
       }
       if ($open.Count -eq 0 -and $checked -gt 0) { throw "Already applied: cited task is checked in $kanbanRel" }
       if ($open.Count -eq 0) { throw "No task line matching the cited fragment in $kanbanRel" }
-      if ($open.Count -gt 1) { throw "Ambiguous: $($open.Count) open task lines match the fragment in $kanbanRel — refusing" }
+      if ($open.Count -gt 1) { throw "Ambiguous: $($open.Count) open task lines match the fragment in $kanbanRel - refusing" }
       $i = $open[0]
       $lines[$i] = $lines[$i] -replace '\[ \]', '[x]'
       [System.IO.File]::WriteAllText($path, (($lines -join "`n") + "`n"), [System.Text.UTF8Encoding]::new($false))

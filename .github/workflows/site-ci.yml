@@ -24,9 +24,16 @@ jobs:
       - name: voice lint - no em/en dashes in shipped copy
         run: |
           set -e
-          FILES=$(git ls-files 'spec/*.md' 'README.md' 'reference/**' | grep -E '\.(html|md)$' || true)
+          # Every shipped file, not only docs. An adopter reads the reference
+          # scripts and example manifests too, and a rule that covers prose but
+          # not code is exactly the half-rule that misleads anyone porting
+          # against it. Where an em dash is a parsed token or rendered output,
+          # build it from its codepoint ([char]0x2014) so no literal reaches
+          # source: see lint-handoff-frontmatter.ps1 and build-static-home.ps1.
+          FILES=$(git ls-files 'spec/*' 'README.md' 'reference/**')
           BAD=0
           for f in $FILES; do
+            grep -Iq . "$f" 2>/dev/null || continue   # skip binaries and empty files
             HITS=$(perl -CSD -ne 'print "$.: $_" if /[\x{2014}\x{2013}]/' "$f")
             if [ -n "$HITS" ]; then
               echo "::error file=$f::em/en dash found (PPG voice rule: plain hyphens only)"

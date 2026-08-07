@@ -5,7 +5,7 @@
 .DESCRIPTION
   Worked example of the extension contract (spec §Extension surface). Generic
   by construction: scans a configurable directory list for markdown files
-  whose YAML frontmatter has no `type:` key — a minimum-viable schema check
+  whose YAML frontmatter has no `type:` key - a minimum-viable schema check
   any vault convention can build on without naming specific note types.
 .PARAMETER Root
   Vault root.

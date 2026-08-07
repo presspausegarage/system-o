@@ -1,11 +1,11 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-  Install Obsidian on a Linux host — one operator-preference editor option
+  Install Obsidian on a Linux host - one operator-preference editor option
   (§System architecture layer 4, optional), resolved dynamically and verified.
 .DESCRIPTION
   Decided 2026-07-04: VS Code + Remote-SSH is the recommended default for
-  this stack (see reference/docker/README.md) — no GUI app needed on the
+  this stack (see reference/docker/README.md) - no GUI app needed on the
   container/VM side at all, which sidesteps the exact class of friction a
   full day of Hyper-V GPU-passthrough work couldn't cleanly resolve for
   Obsidian specifically. This script remains for operators who prefer
@@ -20,13 +20,13 @@
   What that verification does and does NOT prove: GitHub computes this
   digest server-side when the asset is uploaded to the release. Matching it
   proves the bytes you received are identical to what's recorded against
-  that official release — protecting against a corrupted download or a
+  that official release - protecting against a corrupted download or a
   swapped file at some other point in the chain. It is NOT a cryptographic
   signature from Obsidian's own signing key (they do not currently publish
-  one) — be precise about this distinction rather than overclaim it.
+  one) - be precise about this distinction rather than overclaim it.
 
   Prefers the AppImage: Obsidian does not publish a native .rpm at all
-  (checked directly against the release API — only AppImage, .deb, and a
+  (checked directly against the release API - only AppImage, .deb, and a
   handful of non-Linux formats exist), so branching on rpm-vs-deb package
   families would be incomplete for rpm-based hosts regardless of effort.
   The AppImage runs identically on any distro with FUSE (present by default
@@ -53,7 +53,7 @@ function Say { param([string]$m) Write-Host "[install-obsidian] $m" }
 
 if ($IsWindows) { throw "This installer targets Linux hosts. Obsidian for Windows ships its own installer from obsidian.md/download." }
 
-# --- 1. Resolve the CURRENT release dynamically — never a pinned version/URL ---
+# --- 1. Resolve the CURRENT release dynamically - never a pinned version/URL ---
 Say "querying GitHub's official release API for the current version..."
 $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest' -Headers @{ 'User-Agent' = 'system-o-install-obsidian' }
 Say "current release: $($release.tag_name)"
@@ -70,7 +70,7 @@ if ($PreferDeb) {
     $asset = $release.assets | Where-Object { $_.name -match '^obsidian_[\d.]+_amd64\.deb$' } | Select-Object -First 1
     if ($asset) { $installMode = 'deb' }
   }
-  if (-not $asset) { Say "WARN -PreferDeb requested but host isn't a non-ARM Debian-family system (or no .deb asset published this release) — falling back to AppImage" }
+  if (-not $asset) { Say "WARN -PreferDeb requested but host isn't a non-ARM Debian-family system (or no .deb asset published this release) - falling back to AppImage" }
 }
 if (-not $asset) {
   $pattern = if ($isArm) { '^Obsidian-[\d.]+-arm64\.AppImage$' } else { '^Obsidian-[\d.]+\.AppImage$' }
@@ -87,11 +87,11 @@ $actual = (Get-FileHash -Path $tmpFile -Algorithm SHA256).Hash.ToLower()
 if ($expected) {
   if ($actual -ne $expected) {
     Remove-Item $tmpFile -Force
-    throw "CHECKSUM MISMATCH for $($asset.name) — expected $expected, got $actual. Refusing to install; re-run, and if this repeats, treat it as a real integrity problem, not a fluke."
+    throw "CHECKSUM MISMATCH for $($asset.name) - expected $expected, got $actual. Refusing to install; re-run, and if this repeats, treat it as a real integrity problem, not a fluke."
   }
   Say "checksum verified: sha256:$actual matches GitHub's release record for $($asset.name)"
 } else {
-  Say "WARN release API returned no digest for this asset — proceeding unverified (should not normally happen; worth checking manually if it does)"
+  Say "WARN release API returned no digest for this asset - proceeding unverified (should not normally happen; worth checking manually if it does)"
 }
 
 # --- 4. Install ---
@@ -107,5 +107,5 @@ if ($installMode -eq 'deb') {
   Move-Item -Path $tmpFile -Destination $dest -Force
   & chmod +x $dest
   Say "installed to $dest"
-  Say "launch: $dest  (add --no-sandbox if it fails to start on a minimal desktop — a common Electron/AppImage gotcha, not a sign anything is wrong)"
+  Say "launch: $dest  (add --no-sandbox if it fails to start on a minimal desktop - a common Electron/AppImage gotcha, not a sign anything is wrong)"
 }
