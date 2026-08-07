@@ -11,7 +11,7 @@
 function New-DawnStatus {
   param(
     [string]$Name,
-    [ValidateSet('clean', 'applied', 'proposed', 'held', 'finding', 'silence')]
+    [ValidateSet('clean', 'applied', 'proposed', 'held', 'finding', 'skipped', 'silence')]
     [string]$State,
     [string]$Detail,
     [string[]]$Evidence = @()
@@ -49,8 +49,15 @@ function Read-DawnTaskStatus {
       if ($body -notmatch 'purge-sewerpipe:\s*done\.\s*deleted=(\d+)\s+total=([^\r\n\s]+)') {
         return New-DawnStatus -Name $Name -State finding -Detail 'ran but emitted no completion evidence'
       }
-      $detail = "deleted=$($Matches[1]) total=$($Matches[2])"
-      return New-DawnStatus -Name $Name -State $(if ([int]$Matches[1] -gt 0) { 'applied' } else { 'clean' }) -Detail $detail
+      $deleted = [int]$Matches[1]
+      $total = $Matches[2]
+      # A dry run counts what it WOULD have removed, so reporting it as applied
+      # would put a false statement in the evidence artifact.
+      if ($body -match 'purge-sewerpipe:\s*done\..*dry-run=\s*(?i:true)') {
+        return New-DawnStatus -Name $Name -State skipped -Detail "would-delete=$deleted total=$total; dry run, nothing removed"
+      }
+      $detail = "deleted=$deleted total=$total"
+      return New-DawnStatus -Name $Name -State $(if ($deleted -gt 0) { 'applied' } else { 'clean' }) -Detail $detail
     }
     'sweep' {
       if ($body -notmatch 'sweep-handoffs:\s*done\.\s*swept=(\d+)\s+kept=(\d+)\s+skipped=(\d+)') {

@@ -38,7 +38,7 @@ function Convert-DawnSecureStringToText {
 }
 
 function Get-DawnEmailSettings {
-  param([string]$ConfigPath = '')
+  param([string]$ConfigPath = '', [string]$Root = '')
 
   $envNames = @('SYSTEM_O_SMTP_HOST', 'SYSTEM_O_SMTP_USER', 'SYSTEM_O_SMTP_PASSWORD', 'SYSTEM_O_SMTP_RECIPIENT')
   $hasEnv = @($envNames | Where-Object { -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) }).Count
@@ -59,12 +59,28 @@ function Get-DawnEmailSettings {
   }
 
   $path = Get-DawnEmailConfigPath -ConfigPath $ConfigPath
+  # Guarded on read as well as on write. The wizard refuses to put credentials
+  # in the vault, but nothing stopped a hand-edited -ConfigPath from pointing
+  # the sender back at one.
+  if ($Root -and (Test-DawnPathInsideRoot -Path $path -Root $Root)) {
+    throw "Refusing to read email credentials from inside the vault: $path"
+  }
   if (-not (Test-Path $path)) { return $null }
   $cfg = Get-Content -Path $path -Raw -Encoding UTF8 | ConvertFrom-Json
   $password = $null
   if ($cfg.storage -eq 'dpapi-current-user') {
-    if (-not $IsWindows) { throw "DPAPI email config cannot be read on this platform: $path" }
-    $password = Convert-DawnSecureStringToText (ConvertTo-SecureString ([string]$cfg.password_protected))
+    # DPAPI is current-user scoped. A config written by the interactive
+    # operator is unreadable to a service account running the schedule, and
+    # unreadable anywhere off Windows. Both are unusable credential material
+    # rather than a broken vault, so the caller degrades instead of crashing.
+    if (-not $IsWindows) {
+      throw [System.Security.Cryptography.CryptographicException]::new("Email config at $path is DPAPI protected and cannot be read on this platform. Re-run setup-dawn-email.ps1 here, or configure SYSTEM_O_SMTP_* environment variables.")
+    }
+    try {
+      $password = Convert-DawnSecureStringToText (ConvertTo-SecureString ([string]$cfg.password_protected))
+    } catch {
+      throw [System.Security.Cryptography.CryptographicException]::new("Email config at $path was protected by a different Windows account and cannot be decrypted here. Re-run setup-dawn-email.ps1 under the account that runs the schedule.")
+    }
   } elseif ($cfg.storage -eq 'unix-0600') {
     if ($IsWindows) { throw "Unix email config cannot be read on Windows: $path" }
     $mode = [System.IO.File]::GetUnixFileMode($path)

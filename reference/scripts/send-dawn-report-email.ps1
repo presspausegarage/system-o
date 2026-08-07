@@ -10,7 +10,8 @@
 .PARAMETER Root
   Vault root.
 .PARAMETER ConfigPath
-  Optional external email config path. Never place it inside the vault.
+  Optional external email config path. A path inside the vault is refused on
+  read as well as on write.
 .PARAMETER NoSend
   Build evidence and stop before configuration lookup or SMTP delivery.
 .PARAMETER SkipBuild
@@ -55,7 +56,15 @@ if ($NoSend) {
 }
 
 . (Join-Path $PSScriptRoot '_dawn-email.ps1')
-$settings = Get-DawnEmailSettings -ConfigPath $ConfigPath
+try {
+  $settings = Get-DawnEmailSettings -ConfigPath $ConfigPath -Root $Root
+} catch [System.Security.Cryptography.CryptographicException] {
+  # Unusable credential material, not a broken vault. The evidence already
+  # landed, so say plainly that delivery is off and exit clean.
+  Write-Host "STATUS dawn-email delivery=file-only reason=config-unreadable html=$OutPath text=$TextOutPath"
+  Write-Host $_.Exception.Message
+  exit 0
+}
 if (-not $settings) {
   $resolvedConfig = Get-DawnEmailConfigPath -ConfigPath $ConfigPath
   Write-Host "STATUS dawn-email delivery=file-only reason=unconfigured config=$resolvedConfig html=$OutPath text=$TextOutPath"
