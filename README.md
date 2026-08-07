@@ -36,8 +36,10 @@ The reference also ships an evidence-first dawn report: mail-safe HTML plus a pl
 - **Darkloop** - the vault's unattended operating cycle; custody alternates between an attended session and automation, every crossing is a vault artifact
 - **File & folder taxonomy** - the locked minimum a fresh vault needs vs. what an adopter names themselves
 - **Vault mutation safety** - scoped, preconditioned edits to existing vault files; fail closed when an edit cannot be verified, with narrow exceptions for creation, declared generation, and exact operator authorization
+- **Host configuration boundary** - where optional integration secrets live (never in the vault), environment-first resolution, and the split between degrading honestly and refusing loudly
 - **Agent orientation files** - the canonical `CLAUDE.md`/`AGENTS.md` cascade
 - **Transform manifest** - deterministic source→target path/content rewrites for porting an orientation file between agents
+- **Automation chain manifest** - `_meta/chain.yaml`, the declaration that makes silence detectable for layer 2: you cannot notice the absence of something nobody said should exist
 - **Loop manifest** - how a loop cell is declared: detect script, propose endpoints (with required degradation chain), structural verify, gated apply
 - **Extension surface** - read-only, flag-only heartbeat checks any adopter can add without touching core
 - **Agent context bundle** - `_meta/agent-context/`, the vault-native home for durable agent memory (portable across machines and harnesses, unlike a home-directory memory store)

@@ -115,6 +115,7 @@ Custody transfers at exactly two points on the Day ring - where its arc changes 
 ### Invariants
 
 - Custody alternates only at crossings; every crossing leaves a durable artifact in the vault
+- The dawn artifact is **evidence first, delivery second**: it is written into the vault before any delivery is attempted, in a rendered form and a plain-text alternate that is itself a durable vault file, not merely a MIME part. Delivery (email or otherwise) is optional, and its absence is not a failure - an unconfigured vault surfaces the artifact and says plainly that delivery is off
 - The dark half never blocks the light half: with the chain dead, the vault remains fully operable; the outage surfaces at the next dawn crossing as a missing heartbeat
 - Rings do not redefine loops - a loop cell is still defined by the invariant it maintains, not by its position in any schedule; rings describe when revolutions occur and who is present
 - Clock times are adopter-chosen and host-native; the darkloop is defined by custody and the three properties, not by the clock - an operator who fires the chain by hand at noon has still run the darkloop
@@ -199,6 +200,44 @@ After an accidental overwrite, stop further writes to the target, identify and v
 - Stage-2 onboarding refines starter content through scoped edits and preserves the rule.
 - The conformance harness asserts both requirements in a freshly bootstrapped vault.
 - Bootstrap and deterministic generators document which explicit exception authorizes their writes.
+
+---
+
+## § Host configuration boundary
+
+### Purpose
+
+§Vault mutation safety governs what may be written *inside* the vault. It says nothing about where host-level configuration lives, and optional integrations need some: an SMTP credential for dawn delivery, a token for an adopter's own extension. The vault is the wrong home for any of it. A vault is synced, backed up, opened by editors, and read wholesale by agents - every property that makes it good operator state makes it a bad credential store.
+
+### Locked rule
+
+- A secret is **never** written inside the vault, in any form, including one an adopter passes in by hand. The rule is enforced at both doors: a component refuses to write a credential store under the vault root, and refuses to read one from under it.
+- Resolution order for optional integration configuration is **environment first, then an external config file outside the vault**. Environment is what an orchestrator or a real secrets manager injects; the file is the fallback for a host that has neither.
+- Protection is platform-appropriate and honestly named. On Windows the reference protects the value with current-user DPAPI. On Unix it uses a mode-0600 file outside any bind mount. The Unix form is **a local-secret boundary, not encryption**, and must be documented as such rather than implying protection it does not provide.
+- Credential material scoped to a principal carries that scope as a documented constraint. Current-user DPAPI is readable only by the account that wrote it, so a config written by an interactive operator is unreadable to a service account running the schedule.
+
+### Degrade rule
+
+Optional delivery is optional. Distinguish two failures and treat them differently:
+
+| Failure | Behavior |
+|---|---|
+| **Unusable credential material** - no config present, or a config this principal or platform cannot decrypt | Degrade: complete the work, state plainly that delivery is off and why, exit clean. The evidence artifact already landed; delivery was never the deliverable. |
+| **Security refusal** - a credential store inside the vault, or permissions broader than the declared mode | Fail loud. This is a misconfiguration the operator must see, not a condition to route around. |
+
+Never a fake success, and never a nag loop.
+
+### Conformance guarantees
+
+- A component that reads optional credentials refuses a config path resolving inside the vault root, and does not echo the credential while refusing
+- Unusable credential material degrades to the no-delivery path with a stated reason and a zero exit
+- Guided setup declines cleanly and writes nothing when run non-interactively
+- The conformance harness asserts all three without any real credential, so the full suite runs on a host that has never configured delivery
+
+### Out of scope (post-v1.0)
+
+- A pluggable secret-provider interface (managed vaults, OS keychains beyond DPAPI, agent-brokered credentials)
+- Encryption at rest on Unix - it needs a key, and a key beside the file it protects is theater; a real answer means a provider interface, above
 
 ---
 
@@ -342,6 +381,55 @@ Conformance requirements for any transform script implementation:
 - Conditional operations (`if target == "aider"`)
 - Includes / inheritance between manifests
 - Regex in the `from` field (literal matching is sufficient)
+
+---
+
+## § Automation chain manifest
+
+### Purpose
+
+§Darkloop makes silence a detectable failure. Detection has a precondition nothing else in this spec supplies: **you cannot notice the absence of something nobody declared should exist.** The loop layer already meets it - active manifests in `_meta/loops/` say which cells are expected to run - but layer 2 had no equivalent, so an implementation had to hardcode the surfaces it knew about. Any nightly work an adopter added was, by construction, unmonitored. This section closes that asymmetry.
+
+### Location
+
+`_meta/chain.yaml`, one entry per declared layer-2 surface:
+
+```yaml
+chain:
+  - task: triage-inbox
+    log: triage
+    parser: triage
+  - task: my-nightly-export
+    parser: heartbeat
+```
+
+| Field | Required | Meaning |
+|---|---|---|
+| `task` | yes | Surface name, as it appears in the surfacing artifact |
+| `log` | no | `_meta/logs/<log>-<date>.log` basename; defaults to the task name |
+| `parser` | no | How to read that log; defaults to `heartbeat` |
+
+### Parser contract
+
+A parser turns one dated log into a state. `heartbeat` is the portable default and the only one an adopter needs: **the log existing for the report date is the beat.** A `STATUS` line, if the task emits one, becomes the detail - the same `STATUS` convention §Extension surface already uses. A reference implementation may add parsers that read formats it ships itself (triage, purge, sweep, extension aggregation), but no conforming vault is required to use them, and an unrecognized parser name is reported as a finding against that entry rather than aborting the artifact.
+
+### Rules
+
+- A declared surface with no evidence for the report date is **silence**, and silence is surfaced as a finding (§Darkloop property 3) alongside the last date that surface did beat
+- Declaration is the adopter's, not the implementation's: removing an entry is how you stop expecting a task, and is a deliberate act rather than a side effect of deleting a script
+- The loop layer is **not** declared here. Active loop manifests are discovered from `_meta/loops/`, and duplicating them would create two sources of truth for the same expectation
+- A vault with no manifest is conformant: the implementation falls back to whatever chain it ships, so an existing install keeps working and the manifest is an addition, never a migration
+
+### Determinism guarantees
+
+- Given identical vault state and report date, the declared surface set and every surface's state are identical
+- A malformed or unrecognized entry degrades to a finding on that entry; the surfacing artifact is still produced
+
+### Out of scope (post-v1.0)
+
+- Scheduling. This manifest declares that a surface is **expected to beat**, not when or how it is invoked - scheduler syntax stays host-native (§Darkloop invariants, layer 2)
+- Per-surface cadence (a weekly task declared here is expected daily); a cadence field is the natural v1.1 extension
+- Dependency ordering between chain tasks
 
 ---
 

@@ -20,10 +20,12 @@
     6. run-extensions.ps1 exits 0 with a well-formed STATUS line
     7. build-static-home.ps1 / build-kanban-csv.ps1 run clean
     8. Dawn report writes HTML plus plain-text evidence, exercises CLEAN,
-       HELD, ATTENTION, and INCOMPLETE, reports a dry run as SKIPPED rather
-       than APPLIED, degrades honestly with no email config and with an
-       undecryptable one, refuses a config stored inside the vault, and
-       declines setup cleanly in non-interactive mode.
+       HELD, ATTENTION, and INCOMPLETE, gives a manifest-declared adopter task
+       silence detection and a heartbeat read without knowing its log format,
+       degrades a bad manifest entry to a finding, reports a dry run as
+       SKIPPED rather than APPLIED, degrades honestly with no email config and
+       with an undecryptable one, refuses a config stored inside the vault,
+       and declines setup cleanly in non-interactive mode.
     9. Loop layer full circle via the stub driver (spec §Measured conformance's
        conformance vehicle, REQUIRED per D6, not optional): a seeded
        session-log gap + stale HOME is detected, proposed via a canned stub
@@ -389,6 +391,34 @@ function Test-DawnReport {
   $incompleteHtmlPath = Join-Path $logsDir "dawn-report-$emptyDate.html"
   $incompleteHtml = if (Test-Path $incompleteHtmlPath) { Get-Content -Path $incompleteHtmlPath -Raw -Encoding UTF8 } else { '' }
   Record 'dawn: INCOMPLETE verdict and silence cards exercise missing beats' ($LASTEXITCODE -eq 0 -and $incompleteHtml -match ' INCOMPLETE</td>' -and $incompleteHtml -match 'SILENCE') $incompleteOut.Trim()
+
+  # Registration: an adopter's own nightly task earns silence detection by
+  # declaring itself, with no reference-side knowledge of its log format. This
+  # is the whole point of the chain manifest - without it, only the four
+  # shipped surfaces could ever be missed.
+  $chainFile = Join-Path $VaultRoot '_meta/chain.yaml'
+  $chainBackup = Get-Content -Path $chainFile -Raw -Encoding UTF8
+  Record 'dawn: bootstrap ships a chain manifest' ($chainBackup -match '(?m)^\s*-\s+task:\s+triage-inbox') ''
+  ($chainBackup.TrimEnd() + "`n  - task: my-nightly-export`n    parser: heartbeat`n") |
+    Set-Content -Path $chainFile -Encoding UTF8
+  $unregisteredOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'build-dawn-report.ps1') -Root $VaultRoot -Date $today 2>&1 | Out-String
+  $unregisteredHtml = Get-Content -Path $htmlPath -Raw -Encoding UTF8
+  Record 'dawn: a declared surface with no log is silence' ($LASTEXITCODE -eq 0 -and $unregisteredHtml -match 'MY-NIGHTLY-EXPORT' -and $unregisteredHtml -match 'SILENCE') $unregisteredOut.Trim()
+  'STATUS exported=42 destination=s3' |
+    Set-Content -Path (Join-Path $logsDir "my-nightly-export-$today.log") -Encoding UTF8
+  $registeredOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'build-dawn-report.ps1') -Root $VaultRoot -Date $today 2>&1 | Out-String
+  $registeredHtml = Get-Content -Path $htmlPath -Raw -Encoding UTF8
+  Record 'dawn: heartbeat parser reads an unknown log format' ($LASTEXITCODE -eq 0 -and $registeredHtml -match 'my-nightly-export' -and $registeredHtml -match 'exported=42 destination=s3') $registeredOut.Trim()
+
+  # A typo in one entry must not take the whole surfacing artifact down.
+  ($chainBackup.TrimEnd() + "`n  - task: fat-fingered`n    parser: nonsense`n") |
+    Set-Content -Path $chainFile -Encoding UTF8
+  'ran' | Set-Content -Path (Join-Path $logsDir "fat-fingered-$today.log") -Encoding UTF8
+  $badParserOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'build-dawn-report.ps1') -Root $VaultRoot -Date $today 2>&1 | Out-String
+  $badParserHtml = if (Test-Path $htmlPath) { Get-Content -Path $htmlPath -Raw -Encoding UTF8 } else { '' }
+  Record 'dawn: an unrecognized parser degrades to a finding, not a crash' ($LASTEXITCODE -eq 0 -and $badParserHtml -match 'unknown parser') $badParserOut.Trim()
+  Remove-Item -Path (Join-Path $logsDir "fat-fingered-$today.log"), (Join-Path $logsDir "my-nightly-export-$today.log") -Force
+  Set-Content -Path $chainFile -Value $chainBackup -Encoding UTF8 -NoNewline
 
   # SKIPPED: a dry run counts what it would have removed. Reporting that as
   # applied would put a false statement in the evidence artifact.
