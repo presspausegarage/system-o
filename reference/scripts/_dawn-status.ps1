@@ -24,6 +24,37 @@ function New-DawnStatus {
   }
 }
 
+function Read-DawnChainManifest {
+  <#
+    Parses _meta/chain.yaml (spec §Automation chain manifest). Deliberately a
+    small hand-rolled reader, matching how the loop runner reads its own
+    manifests: the reference depends on no YAML module.
+
+    chain:
+      - task: triage-inbox
+        log: triage
+        parser: triage
+  #>
+  param([Parameter(Mandatory)][string]$Path)
+
+  $entries = [System.Collections.Generic.List[object]]::new()
+  $current = $null
+  foreach ($raw in (Get-Content -Path $Path -Encoding UTF8)) {
+    $line = ($raw -replace '\s+#.*$', '').TrimEnd()
+    if ($line -match '^\s*-\s+task:\s*(\S+)\s*$') {
+      if ($current) { $entries.Add($current) }
+      $current = [pscustomobject]@{ Task = $Matches[1].Trim('"', "'"); Log = ''; Parser = 'heartbeat' }
+      continue
+    }
+    if (-not $current) { continue }
+    if ($line -match '^\s+log:\s*(\S+)\s*$') { $current.Log = $Matches[1].Trim('"', "'") }
+    elseif ($line -match '^\s+parser:\s*(\S+)\s*$') { $current.Parser = $Matches[1].Trim('"', "'") }
+  }
+  if ($current) { $entries.Add($current) }
+  foreach ($entry in $entries) { if (-not $entry.Log) { $entry.Log = $entry.Task } }
+  return @($entries)
+}
+
 function Read-DawnTaskStatus {
   param(
     [Parameter(Mandatory)][string]$Name,
@@ -114,8 +145,26 @@ function Read-DawnTaskStatus {
       }
       return New-DawnStatus -Name $Name -State held -Detail "$detail; no new repair was written"
     }
+    'heartbeat' {
+      # The portable default: any registered task whose log format the
+      # reference does not know. Presence of the log is the beat; a STATUS
+      # line, if the task emits one, is the detail.
+      $lines = @($body -split "`r?`n" | Where-Object { $_.Trim() })
+      $statusLine = @($lines | Where-Object { $_ -match '^\s*STATUS\s' } | Select-Object -Last 1)
+      if ($statusLine.Count -gt 0) {
+        return New-DawnStatus -Name $Name -State clean -Detail ($statusLine[0].Trim() -replace '^STATUS\s+', '')
+      }
+      if ($lines.Count -gt 0) {
+        $last = $lines[-1].Trim()
+        if ($last.Length -gt 120) { $last = $last.Substring(0, 117) + '...' }
+        return New-DawnStatus -Name $Name -State clean -Detail $last
+      }
+      return New-DawnStatus -Name $Name -State clean -Detail 'ran, empty log'
+    }
     default {
-      throw "Unknown dawn status type: $Type"
+      # A typo in one manifest entry must not take the whole surfacing
+      # artifact down with it. Report it as a finding and keep building.
+      return New-DawnStatus -Name $Name -State finding -Detail "unknown parser '$Type' declared in the chain manifest"
     }
   }
 }
