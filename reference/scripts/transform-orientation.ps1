@@ -8,9 +8,9 @@
     declared in a manifest YAML, and writes the result to a target file.
 
     Operations are applied in fixed order (spec §Transform manifest §Operation order):
-      1. sections  — structural edits (remove / replace / remove_lines_matching)
-      2. paths     — file-path substring substitutions
-      3. renames   — token-level substitutions
+      1. sections - structural edits (remove / replace / remove_lines_matching)
+      2. paths - file-path substring substitutions
+      3. renames - token-level substitutions
 
     Determinism guarantee: same Source + same Manifest → byte-identical output
     (modulo trailing newline normalisation to a single LF). No network calls,
@@ -111,7 +111,7 @@ function Read-Manifest {
                 $k = $Matches[1]; $v = $Matches[2].Trim()
 
                 if ($v -eq '|' -or $v -eq '>') {
-                    # Block-scalar — collect body until de-indent
+                    # Block-scalar - collect body until de-indent
                     $minIndent = ($lines[$i] -replace '^(\s+).*','$1').Length + 2
                     $bodyLines = [System.Collections.ArrayList]::new()
                     $i++
@@ -258,7 +258,7 @@ function Invoke-SubstitutionOps {
         $from = $op['from']
         $to   = $op['to']
 
-        # Read flags — Coerce-Value already applied bool coercion
+        # Read flags - Coerce-Value already applied bool coercion
         $caseSensitive = if ($op.ContainsKey('case_sensitive')) { [bool]$op['case_sensitive'] } else { $true }
         $wordBoundary  = if ($op.ContainsKey('word_boundary'))  { [bool]$op['word_boundary'] }  else { $defaultWordBoundary }
 
@@ -311,7 +311,7 @@ $targetPath = if ($Target -ne '') {
     throw "No -Target specified and manifest has no 'target:' field."
 }
 
-# Read source — normalise to LF
+# Read source - normalise to LF
 $raw   = (Get-Content $sourcePath -Raw -Encoding UTF8) -replace "`r`n","`n" -replace "`r","`n"
 $lines = $raw -split "`n"
 # Trim trailing empty element from final-newline split

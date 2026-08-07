@@ -12,10 +12,10 @@
 
   Per-HANDOFF detection (not per-date): a gap is a handoff whose basename is
   not `[[wikilinked]]` by any session-log entry. Per-date detection is blind
-  to a second same-date session once any sibling session logs — this is the
+  to a second same-date session once any sibling session logs - this is the
   minimum viable fix, found in production use of the reference implementation.
 
-  This is the SESSION-LOG/HOME slice only — the portable core the loop cell
+  This is the SESSION-LOG/HOME slice only - the portable core the loop cell
   needs. It intentionally omits vault-hygiene heartbeat checks (registry
   drift, launchpad integrity, frontmatter linting, PARA structure, etc.):
   those are operator-specific conventions layered on top of the reference
@@ -85,7 +85,7 @@ foreach ($h in $handoffFiles) {
   }
 }
 
-# 3) commit dates — generic scan: any top-level dir with a .git folder
+# 3) commit dates - generic scan: any top-level dir with a .git folder
 $commitByDate = @{}
 $gitCmd = Get-Command git -ErrorAction SilentlyContinue
 if ($gitCmd) {
@@ -106,7 +106,7 @@ if ($gitCmd) {
   Say "note: git not found - commit scan skipped (handoff-only detection)"
 }
 
-# 4) gaps, PER HANDOFF: an in-window handoff (not today's — may be unwrapped) whose
+# 4) gaps, PER HANDOFF: an in-window handoff (not today's - may be unwrapped) whose
 #    basename is not wikilinked by any session-log entry. Commit-only dates (no
 #    handoff exists) keep a per-date check, marked for a human-drafted entry.
 $gaps = New-Object System.Collections.Generic.List[string]
@@ -187,7 +187,7 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.Append($nl + $START + $nl)
 [void]$sb.Append("## Wrap-checklist follow-ups (auto-flagged $Date)" + $nl + $nl)
 if ($gaps.Count -gt 0) {
-  [void]$sb.Append("**Missing session-log entries** — each item below has no session-log entry linking it (commit-only dates have no entry at all). Prepend one per item, sourced from its handoff:" + $nl + $nl)
+  [void]$sb.Append("**Missing session-log entries** - each item below has no session-log entry linking it (commit-only dates have no entry at all). Prepend one per item, sourced from its handoff:" + $nl + $nl)
   foreach ($g in ($gaps | Sort-Object -Descending)) {
     if ($g -like 'commit-only:*') {
       $d = $g.Substring(12)

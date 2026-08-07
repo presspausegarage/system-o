@@ -1,5 +1,5 @@
 # system-o reference container (distribution review D1: Docker is the primary
-# install path). This image is the automation-chain RUNTIME — pwsh 7 + cron +
+# install path). This image is the automation-chain RUNTIME - pwsh 7 + cron +
 # the reference scripts/extensions/templates. It is NOT the vault: the vault
 # is a bind mount (see docker-compose.example.yml), edited by whatever editor
 # and agent harness the adopter chooses on the host (spec layers 4-5, optional
@@ -16,9 +16,9 @@ LABEL org.opencontainers.image.title="system-o" \
       org.opencontainers.image.source="https://github.com/presspausegarage/system-o"
 
 # git: needed by detect-wrap-tail.ps1's commit-only-date scan.
-# cron: the in-container scheduler (dissolves per-OS scheduler registration —
+# cron: the in-container scheduler (dissolves per-OS scheduler registration -
 # distribution review D1/D3).
-# tzdata: so `TZ` (compose environment) actually shifts the container clock —
+# tzdata: so `TZ` (compose environment) actually shifts the container clock -
 # cron fires on container time, which is UTC unless you set TZ.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git cron ca-certificates tzdata \
@@ -45,7 +45,7 @@ COPY reference/docker/bootstrap.ps1   /opt/system-o/bootstrap.ps1
 COPY reference/docker/healthcheck.ps1 /opt/system-o/healthcheck.ps1
 COPY reference/docker/crontab.example /opt/system-o/crontab.example
 
-# Bind-mounted at runtime — see docker-compose.example.yml. Declaring the
+# Bind-mounted at runtime - see docker-compose.example.yml. Declaring the
 # volume here documents the contract even for a plain `docker run`.
 VOLUME ["/vault"]
 ENV VAULT_ROOT=/vault

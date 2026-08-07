@@ -9,7 +9,7 @@
     2. the locked directory set is present
     3. the crontab is installed, references run-extensions.ps1, and carries no
        unsubstituted $VAULT_ROOT literal
-  Anything else exits 1, which Docker surfaces as an unhealthy container —
+  Anything else exits 1, which Docker surfaces as an unhealthy container -
   "running" alone is not proof of a working install (that gap is exactly what
   this check exists to close).
 #>

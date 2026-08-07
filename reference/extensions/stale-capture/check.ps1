@@ -37,7 +37,7 @@ if (Test-Path $dir) {
     $flagged = $true
   }
 } else {
-  Write-Host "$CaptureDir not present — nothing to check"
+  Write-Host "$CaptureDir not present - nothing to check"
 }
 
 Write-Host ("EXTENSION-STATUS name=stale-capture flagged={0}" -f $flagged.ToString().ToLower())

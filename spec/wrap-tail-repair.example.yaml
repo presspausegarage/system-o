@@ -1,4 +1,4 @@
-# Loop manifest — wrap-tail-repair (canonical example, spec §Loop manifest)
+# Loop manifest - wrap-tail-repair (canonical example, spec §Loop manifest)
 # Schema: loop cell = detect (script) -> propose (LLM) -> verify (script) -> apply (gated).
 # Consumed by reference/scripts/run-loop.ps1. Policy lives HERE, not in prompts or code.
 #
@@ -7,11 +7,11 @@
 #
 # The seam (v2): the runner enforces scope, budget, endpoint degradation,
 # timeouts, and apply gating generically from any manifest; the loop-specific
-# pieces — findings adapter, verifier, proposal bodies, repair executors —
+# pieces - findings adapter, verifier, proposal bodies, repair executors -
 # live in the CELL SCRIPT declared below (_meta/scripts/cells/ in an adopted
 # vault), dot-sourced by run-loop.ps1 and apply-loop-proposal.ps1. A second,
 # materially different loop is a manifest plus a cell script implementing the
-# contract in run-loop.ps1's .DESCRIPTION — no runner fork. The shipped
+# contract in run-loop.ps1's .DESCRIPTION - no runner fork. The shipped
 # kanban-handoff-reconciler (see kanban-handoff-reconciler.example.yaml) is
 # exactly that second loop.
 
@@ -31,13 +31,13 @@ detect:
   script: detect-wrap-tail.ps1
   args: -DryRun
 
-# verify: structural — deterministic checks in run-loop.ps1 (format, date, handoff wikilink,
+# verify: structural - deterministic checks in run-loop.ps1 (format, date, handoff wikilink,
 # single header, bullet tail). Full-circle verification = the detector self-clears.
 verify: structural
 
 # propose-only until earned: run for real, review proposals, then a human flips this
 # field per-endpoint once a trusted model's faithfulness is demonstrated (not just its
-# structural pass rate — see spec §Measured conformance). Scope here is risk<=2-equivalent
+# structural pass rate - see spec §Measured conformance). Scope here is risk<=2-equivalent
 # (session-log + HOME only); never enable auto-apply on a scope that touches irreversible
 # or high-consequence state.
 apply: propose-only
@@ -47,7 +47,7 @@ promote_after: 5
 # Priority order. Degradation is REQUIRED design (spec §Endpoint degradation): the first
 # endpoint is the quality ceiling, the last is the availability floor. A loop never
 # hard-depends on frontier availability; if all endpoints fail it fail-closes with no
-# proposal. Swap in your own driver/model/url — this is illustrative, not load-bearing.
+# proposal. Swap in your own driver/model/url - this is illustrative, not load-bearing.
 endpoints:
   - driver: claude-cli
     model: <your-frontier-model>
@@ -57,7 +57,7 @@ endpoints:
     model: <your-local-model>
     num_ctx: 8192
     timeout_sec: 120
-  # a deterministic conformance/test endpoint — no LLM, no network:
+  # a deterministic conformance/test endpoint - no LLM, no network:
   # - driver: stub
   #   model: canned
   #   file: spec/wrap-tail-repair.stub-response.example.md

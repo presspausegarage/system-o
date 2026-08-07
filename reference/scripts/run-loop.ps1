@@ -5,8 +5,8 @@
   -> verify (cell) -> emit proposal -> apply (gated per endpoint).
 .DESCRIPTION
   Executes one loop declared in a _meta/loops/*.yaml manifest. v2 (2026-07-22,
-  system-o v0.3.0 slice): the loop-specific pieces — findings adapter, draft
-  verifier, proposal bodies, repair executors, cascade — live in a CELL SCRIPT
+  system-o v0.3.0 slice): the loop-specific pieces - findings adapter, draft
+  verifier, proposal bodies, repair executors, cascade - live in a CELL SCRIPT
   declared by the manifest (cell: <file>, resolved in _meta/scripts/cells/),
   dot-sourced by this runner and by apply-loop-proposal.ps1. The runner owns
   everything generic: manifest parsing, detect invocation (read-only, child
@@ -14,7 +14,7 @@
   certified-endpoint reordering under apply:auto (dead-apply-leg fix
   2026-07-06), budget caps, scope gate, idempotency, proposals, ledger, STATUS.
 
-  CELL CONTRACT — a cell script must define:
+  CELL CONTRACT - a cell script must define:
     $CellContract   @{ verifier = '<id>'; changes = @('<change>', ...) }
                     verifier must equal the manifest's verify: value; the
                     runner refuses a mismatch or a missing cell (fail-closed,
@@ -26,7 +26,7 @@
     Invoke-LoopRepair       -Change <string> -Fields <ht> -Body <string>
                             -Root <path> -> status message; throws on failure.
                             MUST work from the proposal file alone (no cell
-                            state) — the applier runs in a later process.
+                            state) - the applier runs in a later process.
     Get-LoopCascadeFindings -Applied <finding[]> -Root <path> -> finding[]
                             (optional; called once after the main pass with
                             the findings AUTO-APPLIED this run)
@@ -46,7 +46,7 @@
   Scope grammar (checked here before a proposal is written, re-checked by the
   applier): exact path | 'dir/' prefix | '**/suffix' match.
 
-  Proposals land in _meta/loops/proposals/ (NOT _inbox/ — the 02:00 triage
+  Proposals land in _meta/loops/proposals/ (NOT _inbox/ - the 02:00 triage
   chain owns _inbox and must never sweep machine-generated proposals).
   Apply via apply-loop-proposal.ps1 or the apply-proposals.ps1 walk.
 
@@ -73,10 +73,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Force UTF-8 for capturing claude-cli's stdout — found 2026-07-04: pipe capture of a
+# Force UTF-8 for capturing claude-cli's stdout - found 2026-07-04: pipe capture of a
 # native process depends on ambient console/$OutputEncoding state, which differs between
 # `pwsh -File` and `pwsh -Command`. Without this, a correct em-dash decodes as mojibake
-# and trips structural verifiers — a stdout-decoding problem, not a model problem.
+# and trips structural verifiers - a stdout-decoding problem, not a model problem.
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -119,7 +119,7 @@ $manifestPath = (Resolve-Path $Manifest).Path
 $mf = Read-LoopManifest $manifestPath
 $loopName = $mf['loop']
 if (-not $loopName) { throw "Manifest has no 'loop:' field." }
-if ($mf.scope.Count -eq 0) { throw "Manifest has no 'scope:' entries — scope is required and enforced." }
+if ($mf.scope.Count -eq 0) { throw "Manifest has no 'scope:' entries - scope is required and enforced." }
 
 $logDir  = Join-Path $Root '_meta/logs'
 $logFile = Join-Path $logDir ("loop-{0}-{1}.log" -f $loopName, (Get-Date -Format 'yyyy-MM-dd'))
@@ -132,7 +132,7 @@ function Say { param([string]$m)
 Say ("starting loop={0} root={1} dry-run={2}" -f $loopName, $Root, $DryRun.IsPresent)
 
 # --- Cell resolution (the seam) --------------------------------------------
-if (-not $mf['cell']) { throw "Manifest has no 'cell:' field — v2 runner requires a cell script in _meta/scripts/cells/ implementing this loop's adapter/verifier/repairs (see .DESCRIPTION)." }
+if (-not $mf['cell']) { throw "Manifest has no 'cell:' field - v2 runner requires a cell script in _meta/scripts/cells/ implementing this loop's adapter/verifier/repairs (see .DESCRIPTION)." }
 $cellPath = Join-Path $Root ('_meta/scripts/cells/' + $mf['cell'])
 if (-not (Test-Path $cellPath)) { throw "Cell script not found: $cellPath" }
 . $cellPath
@@ -142,7 +142,7 @@ foreach ($fn in 'Get-LoopFindings','Test-LoopDraft','Get-LoopProposalBody','Invo
 if (-not (Get-Variable CellContract -ErrorAction SilentlyContinue)) { throw "Cell $($mf['cell']) does not define `$CellContract." }
 $verifierId = [string]($mf['verify'] ?? '')
 if ($CellContract['verifier'] -ne $verifierId) {
-  throw "Manifest declares verify: '$verifierId' but cell $($mf['cell']) implements '$($CellContract['verifier'])' — refusing (a manifest's declared policy must match the code that enforces it)."
+  throw "Manifest declares verify: '$verifierId' but cell $($mf['cell']) implements '$($CellContract['verifier'])' - refusing (a manifest's declared policy must match the code that enforces it)."
 }
 
 $proposalsDir = Join-Path $Root '_meta/loops/proposals'
@@ -168,14 +168,14 @@ if ($applyMode -eq 'auto' -and $autoEps.Count -gt 0) {
 # --- 1. DETECT ---------------------------------------------------------------
 $detector = Join-Path $Root ('_meta/scripts/' + $mf.detect['script'])
 if (-not (Test-Path $detector)) { throw "Detector not found: $detector" }
-# detect.args passes through from the manifest; -DryRun is forced on if absent — the
+# detect.args passes through from the manifest; -DryRun is forced on if absent - the
 # runner's detect step is always read-only, a manifest cannot opt its detector into
 # writing here. Invoked as a child pwsh so args from data bind as real parameters
-# (in-process array splatting binds positionally — found 2026-07-22).
+# (in-process array splatting binds positionally - found 2026-07-22).
 $detectArgs = @()
 if ($mf.detect['args']) { $detectArgs = @("$($mf.detect['args'])" -split '\s+' | Where-Object { $_ }) }
 if ($detectArgs -notcontains '-DryRun') {
-  if ($mf.detect['args']) { Say "note: detect.args lacks -DryRun — forcing it (the runner's detect step is always read-only)" }
+  if ($mf.detect['args']) { Say "note: detect.args lacks -DryRun - forcing it (the runner's detect step is always read-only)" }
   $detectArgs += '-DryRun'
 }
 $detectOut = & pwsh -NoProfile -File $detector -Root $Root @detectArgs *>&1 | ForEach-Object { "$_" }
@@ -184,7 +184,7 @@ foreach ($l in $detectOut) { Say ("detect> " + $l) }
 # --- Findings via the cell ---------------------------------------------------
 $findings = @(Get-LoopFindings -DetectOutput $detectOut -Root $Root)
 $live = @($findings | Where-Object { -not $_.ContainsKey('skip') })
-foreach ($f in ($findings | Where-Object { $_.ContainsKey('skip') })) { Say ("finding $($f.summary): skipped — $($f.skip)") }
+foreach ($f in ($findings | Where-Object { $_.ContainsKey('skip') })) { Say ("finding $($f.summary): skipped - $($f.skip)") }
 
 function Get-StatusExtras {
   if (Get-Command Get-LoopStatusFields -ErrorAction SilentlyContinue) { return ((Get-LoopStatusFields) + ' ') }
@@ -268,7 +268,7 @@ function Test-InScope {
   return $false
 }
 
-function Invoke-AutoApply {   # inline apply arm — fires ONLY for allowlisted endpoints in auto mode
+function Invoke-AutoApply {   # inline apply arm - fires ONLY for allowlisted endpoints in auto mode
   param([string]$ProposalFile, [string]$Endpoint)
   if ($applyMode -ne 'auto' -or $autoEps -notcontains $Endpoint) { return $false }
   try {
@@ -285,7 +285,7 @@ function Invoke-Endpoint {   # one attempt against one endpoint; $null on transp
   param([hashtable]$Ep, [string]$Prompt)
   switch ($Ep['driver']) {
     'claude-cli' {
-      # Job wrapper honors timeout_sec — a hung CLI call must degrade to the next
+      # Job wrapper honors timeout_sec - a hung CLI call must degrade to the next
       # endpoint, not hang the whole loop run.
       $timeoutSec = [int]($Ep['timeout_sec'] ?? 180)
       $job = Start-Job -ScriptBlock {
@@ -298,7 +298,7 @@ function Invoke-Endpoint {   # one attempt against one endpoint; $null on transp
       if (-not (Wait-Job -Job $job -Timeout $timeoutSec)) {
         Stop-Job -Job $job
         Remove-Job -Job $job -Force
-        Say ("endpoint claude-cli/{0} timed out after {1}s — degrading to next endpoint" -f $Ep['model'], $timeoutSec)
+        Say ("endpoint claude-cli/{0} timed out after {1}s - degrading to next endpoint" -f $Ep['model'], $timeoutSec)
         return $null
       }
       $r = Receive-Job -Job $job
@@ -308,7 +308,7 @@ function Invoke-Endpoint {   # one attempt against one endpoint; $null on transp
       Say ("endpoint claude-cli/{0} failed (exit={1}): {2}" -f $Ep['model'], $r['code'], $rOut.Substring(0, [Math]::Min(160, $rOut.Length)))
       return $null
     }
-    'stub' {   # deterministic canned response — conformance testing and loop dry runs
+    'stub' {   # deterministic canned response - conformance testing and loop dry runs
       $f = $Ep['file']
       if (-not $f) { Say 'endpoint stub: manifest entry has no file:'; return $null }
       if (-not [System.IO.Path]::IsPathRooted($f)) { $f = Join-Path $Root $f }
@@ -338,12 +338,12 @@ $appliedFindings = [System.Collections.ArrayList]::new()
 function Invoke-FindingPass {
   param([hashtable]$F)
   $label = $F.summary
-  if (Test-PendingProposal -Change $F.change -Fields $F.fields) { Say "${label}: proposal already pending — skipped"; return }
+  if (Test-PendingProposal -Change $F.change -Fields $F.fields) { Say "${label}: proposal already pending - skipped"; return }
 
   $accepted = $null; $usedEp = $null
   if ($F.needs_llm) {
-    if ($null -eq $template) { Say "${label}: manifest has no prompt: template but finding needs an LLM — FAIL-CLOSED"; return }
-    if ($script:calls -ge $maxCalls) { Say "budget: max_calls_per_run=$maxCalls reached — ${label} deferred to next run"; return }
+    if ($null -eq $template) { Say "${label}: manifest has no prompt: template but finding needs an LLM - FAIL-CLOSED"; return }
+    if ($script:calls -ge $maxCalls) { Say "budget: max_calls_per_run=$maxCalls reached - ${label} deferred to next run"; return }
     # render prompt: substitute every var, then clip the clip_var to fit the budget
     $prompt = $template
     foreach ($k in $F.prompt_vars.Keys) {
@@ -357,8 +357,8 @@ function Invoke-FindingPass {
       $prompt = $prompt.Replace('{{' + $F.clip_var + '}}', $clipVal)
     }
     foreach ($ep in $endpointOrder) {
-      # cap checked where calls are counted — a multi-endpoint finding must not overshoot
-      if ($script:calls -ge $maxCalls) { Say "budget: max_calls_per_run=$maxCalls reached mid-finding — remaining endpoints skipped"; break }
+      # cap checked where calls are counted - a multi-endpoint finding must not overshoot
+      if ($script:calls -ge $maxCalls) { Say "budget: max_calls_per_run=$maxCalls reached mid-finding - remaining endpoints skipped"; break }
       $script:calls++
       Say ("${label}: proposing via {0}/{1}" -f $ep['driver'], $ep['model'])
       $draft = Invoke-Endpoint -Ep $ep -Prompt $prompt
@@ -370,7 +370,7 @@ function Invoke-FindingPass {
       Say ("${label}: verifier FAILED on {0}/{1}: {2}" -f $ep['driver'], $ep['model'], ($fails -join '; '))
     }
     if ($null -eq $accepted) {
-      Say "${label}: FAIL-CLOSED — no endpoint produced a verifiable draft"
+      Say "${label}: FAIL-CLOSED - no endpoint produced a verifiable draft"
       if (-not $DryRun) { Add-Ledger (New-LedgerRecord -Finding $F -Endpoint 'none' -Verifier 'fail') }
       return
     }
@@ -379,7 +379,7 @@ function Invoke-FindingPass {
   }
 
   if (-not (Test-InScope $F.target)) {
-    Say "${label}: SCOPE VIOLATION — proposal targets $($F.target), not in manifest scope — suppressed"
+    Say "${label}: SCOPE VIOLATION - proposal targets $($F.target), not in manifest scope - suppressed"
     $script:scopeFails++
     if (-not $DryRun) { Add-Ledger (New-LedgerRecord -Finding $F -Endpoint $usedEp -Verifier 'scope-fail') }
     return
@@ -393,18 +393,18 @@ function Invoke-FindingPass {
       $script:autoApplied++
       [void]$script:appliedFindings.Add($F)
     }
-  } else { Say "${label}: [dry-run] verified proposal ready (endpoint $usedEp) — not written" }
+  } else { Say "${label}: [dry-run] verified proposal ready (endpoint $usedEp) - not written" }
   $script:newProposals++
 }
 
 foreach ($f in $live) { Invoke-FindingPass -F $f }
 
-# --- 4. CASCADE — a repair that deterministically creates a new finding inside the
+# --- 4. CASCADE - a repair that deterministically creates a new finding inside the
 # same loop's scope is proposed in the SAME run, not deferred (runner semantics).
 if (Get-Command Get-LoopCascadeFindings -ErrorAction SilentlyContinue) {
   $cascade = @(Get-LoopCascadeFindings -Applied @($appliedFindings) -Root $Root)
   foreach ($f in $cascade) {
-    if ($f.ContainsKey('skip')) { Say ("cascade $($f.summary): skipped — $($f.skip)"); continue }
+    if ($f.ContainsKey('skip')) { Say ("cascade $($f.summary): skipped - $($f.skip)"); continue }
     Say ("cascade finding: " + $f.summary)
     Invoke-FindingPass -F $f
   }

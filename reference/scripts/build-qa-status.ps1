@@ -7,13 +7,13 @@
   Runs run-extensions.ps1 (spec §Extension surface) and inspects each
   registered loop's most recent ledger record (spec §Loop manifest) for a
   failure, then writes one JSON summary any surface can read without
-  re-deriving chain state itself — e.g. the landing terminal's o-boy widget,
+  re-deriving chain state itself - e.g. the landing terminal's o-boy widget,
   wired to fetch this file when it's served from within a vault (post-v1.0,
   _meta/Kanban.md).
 
   Read-only against everything outside its own output file: same posture as
   an extension (spec §Extension surface), but this script itself is not one
-  — it aggregates extensions plus the loop layer, which a single extension's
+ - it aggregates extensions plus the loop layer, which a single extension's
   own-directory-only write rule can't do. Always exits 0; a check that fails
   to run is recorded as its own flagged finding, not a script failure.
 .PARAMETER Root
@@ -66,13 +66,13 @@ if (Test-Path $loopsDir) {
   $manifests = @(Get-ChildItem -Path $loopsDir -Filter '*.yaml' -File -ErrorAction SilentlyContinue)
 }
 if ($manifests.Count -eq 0) {
-  $checks.Add((New-Check 'loops' 'skipped' 'no active loop manifests (*.yaml) — only .yaml.example present, or none configured'))
+  $checks.Add((New-Check 'loops' 'skipped' 'no active loop manifests (*.yaml) - only .yaml.example present, or none configured'))
 } else {
   foreach ($m in $manifests) {
     $loopName = $m.BaseName
     $ledgerFile = Join-Path $loopsDir "$loopName.ledger.jsonl"
     if (-not (Test-Path $ledgerFile)) {
-      $checks.Add((New-Check "loop:$loopName" 'skipped' 'no ledger yet — has not run'))
+      $checks.Add((New-Check "loop:$loopName" 'skipped' 'no ledger yet - has not run'))
       continue
     }
     $lastLine = Get-Content -Path $ledgerFile -Tail 1 -Encoding UTF8 -ErrorAction SilentlyContinue

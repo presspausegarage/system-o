@@ -3,7 +3,7 @@
 .SYNOPSIS
   Apply (or reject) one approved loop proposal from _meta/loops/proposals/.
 .DESCRIPTION
-  The apply arm of the loop cell — deterministic, no LLM. v2 (2026-07-22,
+  The apply arm of the loop cell - deterministic, no LLM. v2 (2026-07-22,
   system-o v0.3.0 seam refactor): repair implementations live in the loop's
   CELL SCRIPT (manifest cell: field, _meta/scripts/cells/), dot-sourced here
   and invoked via the cell contract's Invoke-LoopRepair. This applier owns the
@@ -78,7 +78,7 @@ if ($Reject) {
 
 # --- Manifest resolution + scope re-check -----------------------------------
 if (-not $Manifest) { $Manifest = Join-Path $Root ("_meta/loops/{0}.yaml" -f $loop) }
-if (-not (Test-Path $Manifest)) { throw "Manifest not found for loop '$loop': $Manifest — cannot verify scope or resolve the cell; refusing to apply." }
+if (-not (Test-Path $Manifest)) { throw "Manifest not found for loop '$loop': $Manifest - cannot verify scope or resolve the cell; refusing to apply." }
 $scope = [System.Collections.ArrayList]::new()
 $cellFile = $null
 $inScope = $false
@@ -88,8 +88,8 @@ foreach ($line in (Get-Content -Path $Manifest -Encoding UTF8)) {
   if ($line -match '^\S') { $inScope = $false }
   if ($line -match '^cell:\s*(\S+)\s*$') { $cellFile = $Matches[1].Trim('"').Trim("'") }
 }
-if ($scope.Count -eq 0) { throw "Manifest $Manifest declares no scope: — refusing to apply." }
-if (-not $cellFile) { throw "Manifest $Manifest declares no cell: — refusing to apply (repairs live in the cell)." }
+if ($scope.Count -eq 0) { throw "Manifest $Manifest declares no scope: - refusing to apply." }
+if (-not $cellFile) { throw "Manifest $Manifest declares no cell: - refusing to apply (repairs live in the cell)." }
 
 function Test-InScope {
   param([string]$T)
@@ -104,7 +104,7 @@ function Test-InScope {
 }
 if (-not (Test-InScope $target)) {
   Add-Ledger 'scope-refused'
-  throw "SCOPE VIOLATION: proposal targets '$target', not in $loop's manifest scope — refused."
+  throw "SCOPE VIOLATION: proposal targets '$target', not in $loop's manifest scope - refused."
 }
 
 # --- Cell resolution + repair -----------------------------------------------

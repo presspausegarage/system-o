@@ -36,7 +36,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# pwsh -File passes array params as one comma-joined string — normalize.
+# pwsh -File passes array params as one comma-joined string - normalize.
 $Scripts = @($Scripts | ForEach-Object { $_ -split ',' } | Where-Object { $_ } | ForEach-Object { $_.Trim() })
 
 # Path-context commands: backslash rules only fire on lines invoking these,
@@ -46,19 +46,19 @@ $pathCmds = 'Join-Path|Test-Path|Resolve-Path|Get-ChildItem|Get-Content|Set-Cont
 $rules = @(
   @{ Id = 'backslash-path';  Severity = 'hard';
      Test = { param($l) ($l -match $pathCmds) -and ($l -match "['`"][^'`"]*\\[A-Za-z_]") -and ($l -notmatch '\\[dswbSWB](\{|\b)') } ;
-     Msg  = "literal '\' separator in a path context — use '/' or chained Join-Path" }
+     Msg  = "literal '\' separator in a path context - use '/' or chained Join-Path" }
   @{ Id = 'windows-env-var'; Severity = 'hard';
      Test = { param($l) $l -match '\$env:(TEMP|TMP|APPDATA|LOCALAPPDATA|ProgramData|USERPROFILE|windir|SystemRoot)\b' } ;
-     Msg  = 'Windows env var — use [IO.Path]::GetTempPath() / XDG-aware resolution' }
+     Msg  = 'Windows env var - use [IO.Path]::GetTempPath() / XDG-aware resolution' }
   @{ Id = 'windows-cmdlet';  Severity = 'hard';
      Test = { param($l) $l -match '\b(Get|New|Register|Unregister|Set)-ScheduledTask\w*\b|-ComObject\b' } ;
-     Msg  = 'Windows-only cmdlet (scheduler/COM) — belongs in a per-OS registration layer' }
+     Msg  = 'Windows-only cmdlet (scheduler/COM) - belongs in a per-OS registration layer' }
   @{ Id = 'windows-exe';     Severity = 'hard';
      Test = { param($l) $l -match '\b(robocopy|attrib|ie4uinit|rundll32|wscript|cscript|reg\.exe)\b|cmd(\.exe)?\s+/c' } ;
-     Msg  = 'Windows-only executable — needs an engine seam or $IsWindows guard' }
+     Msg  = 'Windows-only executable - needs an engine seam or $IsWindows guard' }
   @{ Id = 'drive-letter';    Severity = 'review';
      Test = { param($l) $l -match "['`"][A-Za-z]:\\" } ;
-     Msg  = 'inline drive letter — exempt if an overridable param default, else resolve from vault root' }
+     Msg  = 'inline drive letter - exempt if an overridable param default, else resolve from vault root' }
 )
 
 $targets = if ($Scripts.Count -gt 0) { $Scripts | ForEach-Object { Join-Path $Path $_ } }

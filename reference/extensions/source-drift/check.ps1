@@ -3,7 +3,7 @@
 .SYNOPSIS
   Extension: flag documents that restate a fact out of sync with its canonical source.
 .DESCRIPTION
-  Worked example of the extension contract (spec §Extension surface) — and the
+  Worked example of the extension contract (spec §Extension surface) - and the
   reference implementation's answer to doc rot as a first-class, not narrative-
   only, concern. Policy lives in a manifest (same principle as §Transform
   manifest and §Loop manifest), never in this script: `checks.yaml` declares
@@ -15,7 +15,7 @@
   Generalizes the registry-vs-prose drift pattern (a project registry is
   canonical; hand-authored docs that restate counts/names from it silently
   diverge) into something any adopter configures for their own "N docs assert
-  one fact" problem — no fixed file names, no fixed regex, no code change per
+  one fact" problem - no fixed file names, no fixed regex, no code change per
   check added.
 .PARAMETER Root
   Vault root.
@@ -79,7 +79,7 @@ $manifestPath = Join-Path $Root $Manifest
 $mismatches = New-Object System.Collections.Generic.List[string]
 
 if (-not (Test-Path $manifestPath)) {
-  Write-Host "no checks.yaml configured — nothing to verify (add $Manifest to enable)"
+  Write-Host "no checks.yaml configured - nothing to verify (add $Manifest to enable)"
   Write-Host "EXTENSION-STATUS name=source-drift flagged=false"
   exit 0
 }
@@ -88,13 +88,13 @@ $checks = Read-ChecksManifest $manifestPath
 foreach ($c in $checks) {
   $srcVal = Get-ExtractedValue -Root $Root -RelPath $c.source['file'] -Pattern $c.source['pattern']
   if ($null -eq $srcVal) {
-    $mismatches.Add("$($c.name): source $($c.source['file']) — pattern did not match (source unreadable or format changed)")
+    $mismatches.Add("$($c.name): source $($c.source['file']) - pattern did not match (source unreadable or format changed)")
     continue
   }
   foreach ($d in $c.derived) {
     $derVal = Get-ExtractedValue -Root $Root -RelPath $d.file -Pattern $d.pattern
     if ($null -eq $derVal) {
-      $mismatches.Add("$($c.name): $($d.file) — pattern did not match (doc may have been restructured)")
+      $mismatches.Add("$($c.name): $($d.file) - pattern did not match (doc may have been restructured)")
     } elseif ($derVal -ne $srcVal) {
       $mismatches.Add("$($c.name): $($d.file) says '$derVal'; source $($c.source['file']) says '$srcVal'")
     }
