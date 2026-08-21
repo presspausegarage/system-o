@@ -224,7 +224,10 @@ updated: $today
 
 # Session log
 
-Running record of work sessions - one entry per session, newest at top.
+Running record of work sessions - one entry per session, newest at top. The block between the SESSION-LOG markers is GENERATED from handoffs by `_meta/scripts/build-session-log.ps1` (spec v0.4): a wrap writes the handoff and nothing else; never hand-edit inside the markers. Hand-authored entries (sessions that wrote no handoff) go below the END marker.
+
+<!-- SESSION-LOG:START since=$today -->
+<!-- SESSION-LOG:END -->
 "@ | Set-Content -Path $sessionLog -Encoding UTF8
 
   Say "scaffold complete: $($dirs.Count) folders, orientation file ($AgentTarget), starter GLOSSARY/HOME/session-log/agent-context"

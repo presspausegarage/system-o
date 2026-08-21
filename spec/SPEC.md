@@ -1,4 +1,4 @@
-# system-o specification - v0.3 draft
+# system-o specification - v0.4 draft
 
 > **Status:** draft - 10 sections committed as drafted; remaining v1.0 sections in progress. §Loop manifest carries an explicit reference-implementation status; §Pluggability conformance test has not yet run and is the stated v1.0 gate.
 > **Form:** single file; hard ceiling 1500 lines, target 600-800. Split into modules above ceiling.
@@ -110,7 +110,7 @@ Custody transfers at exactly two points on the Day ring - where its arc changes 
 | Crossing | Direction | Artifact |
 |---|---|---|
 | **Dawn** | dark arc → light arc | The surfacing bundle: built report, review queue, heartbeat summary. The operator re-enters by reading evidence, not by trusting silence. |
-| **Dusk** | light arc → dark arc | The wrap tail: handoff + session-log entry + dashboard bump. The chain audits this crossing; an incomplete wrap is a detectable finding (repairable by a loop cell), not a mystery. |
+| **Dusk** | light arc → dark arc | The wrap tail: handoff + dashboard bump. The session-log entry is not written at dusk - it is derived from the handoff by the chain (§Agent context bundle, "Relationship to `_meta/session-log.md` and handoffs"). The chain audits this crossing; an incomplete wrap is a detectable finding (repairable by a loop cell), not a mystery. |
 
 ### Invariants
 
@@ -187,7 +187,7 @@ Vault files are durable operator state. A failed edit must not turn an existing 
 Whole-file creation or replacement is conformant only when one of these conditions is true:
 
 1. **Create if absent** - bootstrap is creating a target that does not exist, with an existence guard checked immediately before the write.
-2. **Declared deterministic generation** - the target is a declared generated file or generated region, its canonical source lives elsewhere, and the generator validates its postcondition. Human-authored content outside the declared generated surface remains untouched.
+2. **Declared deterministic generation** - the target is a declared generated file or generated region, its canonical source lives elsewhere, and the generator validates its postcondition. Human-authored content outside the declared generated surface remains untouched. Worked example in this spec: the session log's generated region (`<!-- SESSION-LOG:START since=YYYY-MM-DD -->` ... `<!-- SESSION-LOG:END -->`) is derived from handoffs by `build-session-log.ps1`; the generator replaces only that region, verifies it is present exactly once after the write, and leaves every byte below the END marker alone.
 3. **Exact operator authorization** - the operator explicitly names the target file and authorizes whole-file replacement for that operation.
 
 ### Recovery rule
@@ -527,10 +527,10 @@ The schema above is the portable contract. The shipped runner (`reference/script
 
 Two cells ship, materially different at every point of the seam:
 
-- **wrap-tail-repair** - session-log gap detector, `structural` verifier, one LLM repair (drafted session-log entry) plus one deterministic repair (HOME bump) with a cascade between them
+- **wrap-tail-repair** - session-log gap detector, two deterministic repairs (regenerate the session log's generated region from handoffs; HOME bump) with a cascade between them, and **no LLM findings** (v0.4 - the drafted entry retired when the log became a derived index). A cell MAY be LLM-free: a repair that is a pure function of the vault proposes under the runner's `deterministic` endpoint name and needs no verifier beyond its own postcondition
 - **kanban-handoff-reconciler** - handoff/Kanban drift detector, `status-sync` verifier, a compound frontmatter repair (status flip with evidence: completed date, drafted completion note, task citations built from the actual matched cards) plus a deterministic box-check repair. Deliberately not a repair: flipping anything to obsolete - supersession is a judgment call, owned by attended judgment passes, never the mechanical loop.
 
-A third loop is therefore a manifest plus a cell script - no runner fork. The conformance harness proves this shape end to end: its second-loop circle runs the reconciler cell through the same runner and applier as wrap-tail, from seeded drift to detector self-clear. One behavior change from the pre-seam applier: a missing manifest at apply time is now a hard refusal rather than a warning, because the manifest names the cell that implements the repair - it is load-bearing for apply, not only for scope.
+A third loop is therefore a manifest plus a cell script - no runner fork. The conformance harness proves this shape end to end: its first-loop circle runs the wrap-tail cell's deterministic regenerate (no endpoint called, second regenerate byte-identical), and its second-loop circle runs the reconciler cell - the LLM-in-the-loop vehicle - through the same runner and applier, from seeded drift to detector self-clear. One behavior change from the pre-seam applier: a missing manifest at apply time is now a hard refusal rather than a warning, because the manifest names the cell that implements the repair - it is load-bearing for apply, not only for scope.
 
 ### Out of scope (post-v1.0)
 
@@ -640,8 +640,22 @@ Three different lifespans, three different files - do not conflate them:
 | Artifact | Lifespan | Answers |
 |---|---|---|
 | `_meta/agent-context/*.md` | Standing, until superseded | "What does the agent need to know about this operator/vault on every session, indefinitely?" |
-| `_meta/handoffs/*.md` | One session-close, until swept | "What happened this session, what's next?" |
-| `_meta/session-log.md` | Append-only, growing | "What sessions happened, in order?" |
+| `_meta/handoffs/*.md` | One session-close, until swept | "What happened this session, what's next?" - **the authority for "a session happened"** |
+| `_meta/session-log.md` | Growing index: a **generated region derived from handoffs** (newest first) above a human region (pre-adoption history + sessions that wrote no handoff) | "What sessions happened, in order?" - answered by derivation, not by a second write |
+
+The session log is therefore not a second source of truth. A wrap writes the handoff and nothing else; the chain regenerates the log's declared region from the handoffs on disk (live and archived), and the wrap-tail guard's "missing entry" is a real gap only for a handoff-less session. Entry shape is fixed so every consumer parses it identically: `## YYYY-MM-DD <em dash> <handoff title>`, the `[[handoff]]` wikilink, the handoff's `completion_note:` (or its opening paragraph), and a `- time:` line from `time_by_project`. The cut date on the START marker is set once, at adoption; history below the END marker is never rewritten.
+
+### Handoff lifecycle (locked)
+
+The state machine §Extension surface lists as locked, written down (owed since v0.2):
+
+| `status:` | Meaning | Who sets it | Leaves via |
+|---|---|---|---|
+| `ready` | Written at wrap; carries "what's next" for the resuming session | The session, at dusk | `complete` or `obsolete` |
+| `complete` | The work it describes landed; carries `completed_date:` and evidence (`verification:` citations and/or `completion_note:`) | The session that finishes it, a judgment sweep, or the kanban-handoff-reconciler loop when every cited Kanban card is checked (evidence written with the flip) | Archived by the sweep after the retention window |
+| `obsolete` | Superseded or abandoned; never archived as done | A judgment sweep only - never a mechanical loop (supersession is a judgment call) | Archived by the sweep |
+
+Rules: a `complete` handoff without evidence is a lint finding and is not archived until the evidence is cited; basenames are stable IDs (dated, lettered, slugged, never renamed) so wikilinks from the session log and Kanban cards keep resolving across the archive move; the session log derives from handoffs in both the live and archived locations, so archiving never drops an entry.
 
 ### Determinism guarantees
 

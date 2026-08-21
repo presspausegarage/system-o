@@ -3,6 +3,10 @@
 #
 # Extensions run unconditionally: read-only, flag-only, no external dependency
 # (spec §Extension surface). Safe on a fresh install with zero configuration.
+# Session-log generated region (spec v0.4): derived from handoffs, deterministic, no LLM,
+# no network. Safe default-on like the extensions; runs just before them.
+45 2 * * * /usr/bin/pwsh -NoProfile -File $VAULT_ROOT/_meta/scripts/build-session-log.ps1 -Root $VAULT_ROOT >> $VAULT_ROOT/_meta/logs/session-log-cron.log 2>&1
+
 50 2 * * * /usr/bin/pwsh -NoProfile -File $VAULT_ROOT/_meta/scripts/run-extensions.ps1 -Root $VAULT_ROOT >> $VAULT_ROOT/_meta/logs/extensions-cron.log 2>&1
 
 # The loop layer is commented out by default - it ships inert

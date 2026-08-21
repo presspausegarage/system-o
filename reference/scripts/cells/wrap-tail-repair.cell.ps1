@@ -6,20 +6,27 @@
 .DESCRIPTION
   Loop-specific pieces extracted from the v1 monolithic runner/applier
   (2026-07-22, system-o v0.3.0 seam refactor - behavior-preserving port):
-    adapter   parses the wrap-tail detector's dry-run contract line (detect-wrap-tail.ps1 in this reference)
+    adapter   parses detect-wrap-tail.ps1's dry-run contract line
     verifier  'structural' - session-log entry shape (format, date, handoff
               wikilink, single header, bullet tail, no fence)
-    repairs   prepend-session-log-entry (LLM-drafted, dupe-guarded insert)
+    repairs   regenerate-session-log (DETERMINISTIC, spec v0.4:
+              runs build-session-log.ps1, which derives the log's generated region
+              from handoffs - the LLM-drafted prepend-session-log-entry repair is
+              retired; commit-only / handoff-less gaps stay human work)
               bump-home-updated (deterministic, newest-entry-at-apply-time)
-    cascade   HOME bump co-emit when an auto-applied entry outdates HOME's
+    stale     Test-LoopStale - re-checks at APPLY time that the gap still exists
+              (queued proposals can outlive their gap; see the function)
+    cascade   HOME bump co-emit when a regenerated entry outdates HOME's
               stamp (synthetic battery S1/S2 finding, 2026-07-01)
+  This cell has NO LLM findings. Test-LoopDraft is kept only to satisfy the runner's
+  required-function check and fails closed if ever invoked.
 #>
 
 Set-StrictMode -Version Latest
 
 $CellContract = @{
   verifier = 'structural'
-  changes  = @('prepend-session-log-entry', 'bump-home-updated')
+  changes  = @('regenerate-session-log', 'bump-home-updated')
 }
 
 $script:WrapTailGaps       = @()
@@ -34,7 +41,7 @@ function New-HomeBumpFinding {
     fields    = [ordered]@{}
     slug      = (Get-Date -Format 'yyyy-MM-dd')
     needs_llm = $false
-    body      = "Deterministic repair (no LLM): set ``updated:`` in ``_meta/HOME.md`` frontmatter to the newest ``## YYYY-MM-DD`` date in ``_meta/session-log.md`` **at apply time** (order-independent if session-log entries are applied first). Flagged by the wrap-tail detector."
+    body      = "Deterministic repair (no LLM): set ``updated:`` in ``_meta/HOME.md`` frontmatter to the newest ``## YYYY-MM-DD`` date in ``_meta/session-log.md`` **at apply time** (order-independent if session-log entries are applied first). Flagged by the wrap-tail detector (HOME stale)."
     summary   = $Summary
   }
 }
@@ -62,7 +69,7 @@ function Get-LoopFindings {
   foreach ($g in $gaps) {
     # per-handoff gaps arrive as handoff BASENAMES (2026-07-03); commit-only dates arrive marked
     if ($g -like 'commit-only:*') {
-      [void]$findings.Add(@{ change = 'prepend-session-log-entry'; target = '_meta/session-log.md'; fields = [ordered]@{}; summary = "gap $g"; skip = 'commit-only date - needs a human-drafted entry'; needs_llm = $true })
+      [void]$findings.Add(@{ change = 'regenerate-session-log'; target = '_meta/session-log.md'; fields = [ordered]@{}; summary = "gap $g"; skip = 'commit-only date - needs a human-drafted entry below the END marker'; needs_llm = $false })
       continue
     }
     $hBase = $g
@@ -73,18 +80,19 @@ function Get-LoopFindings {
       $handoff = @(Get-ChildItem -Path (Join-Path $Root '_archive/handoffs') -Filter "$hBase.md" -File -Recurse -ErrorAction SilentlyContinue)
     }
     if ($handoff.Count -eq 0) {
-      [void]$findings.Add(@{ change = 'prepend-session-log-entry'; target = '_meta/session-log.md'; fields = [ordered]@{ handoff = $hBase }; summary = "gap $g"; skip = 'handoff file not found'; needs_llm = $true })
+      [void]$findings.Add(@{ change = 'regenerate-session-log'; target = '_meta/session-log.md'; fields = [ordered]@{ handoff = $hBase }; summary = "gap $g"; skip = 'handoff file not found'; needs_llm = $false })
       continue
     }
-    $hContent = Get-Content -Path $handoff[0].FullName -Raw -Encoding UTF8
+    # Deterministic (system-o v0.4): the entry is DERIVED from the handoff by
+    # build-session-log.ps1; one regenerate closes every handoff gap at once, so several
+    # gaps collapse into one effective repair (the second run is a verified no-op).
     [void]$findings.Add(@{
-      change      = 'prepend-session-log-entry'
+      change      = 'regenerate-session-log'
       target      = '_meta/session-log.md'
       fields      = [ordered]@{ entry_date = $d; handoff = $hBase }
       slug        = $hBase
-      needs_llm   = $true
-      prompt_vars = @{ DATE = $d; HANDOFF_BASENAME = $hBase; HANDOFF_CONTENT = $hContent }
-      clip_var    = 'HANDOFF_CONTENT'
+      needs_llm   = $false
+      body        = "Deterministic repair (no LLM): run ``_meta/scripts/build-session-log.ps1`` to regenerate the SESSION-LOG generated region from handoffs; postcondition = ``[[$hBase]]`` present in ``_meta/session-log.md``. Flagged by the wrap-tail detector (detect-wrap-tail.ps1, per-handoff gap)."
       summary     = "gap $g"
     })
   }
@@ -98,59 +106,71 @@ function Get-LoopFindings {
   return $findings.ToArray()   # cells emit items; the runner collects with @() - no comma-wrap
 }
 
-function Test-LoopDraft {   # 'structural' verifier - returns failure reasons (empty = pass)
+function Test-LoopDraft {   # required by the runner contract; this cell has no LLM findings
   param([hashtable]$Finding, [string]$Draft, [string]$Root)
-  $Date = [string]$Finding.fields['entry_date']
-  $HandoffBase = [string]$Finding.fields['handoff']
-  $reasons = [System.Collections.ArrayList]::new()
-  $lines = @($Draft -split "`n")
-  if ($lines.Count -lt 2 -or $lines.Count -gt 40) { [void]$reasons.Add("line count $($lines.Count) outside 2..40") }
-  $em = [string][char]0x2014
-  if ($lines[0] -notmatch ('^## ' + [regex]::Escape($Date) + ' ' + [regex]::Escape($em) + ' .+')) {
-    [void]$reasons.Add('first line is not "## <date> <em-dash> <subject>"')
-  }
-  if (@($lines | Where-Object { $_ -match '^## ' }).Count -ne 1) { [void]$reasons.Add('must contain exactly one "## " header') }
-  if ($HandoffBase -and $Draft -notmatch [regex]::Escape("[[$HandoffBase]]")) { [void]$reasons.Add("missing [[$HandoffBase]] wikilink") }
-  if ($Draft -notmatch '(?m)^- ') { [void]$reasons.Add('missing trailing bullet line(s)') }
-  if ($Draft -notmatch 'Time') { [void]$reasons.Add('missing time-spent mention') }
-  if ($Draft -match '```') { [void]$reasons.Add('contains a code fence') }
-  return $reasons   # emit items; the runner collects with @()
+  return @('wrap-tail-repair cell has no LLM-drafted findings (spec v0.4) - refusing draft')
 }
-
 function Get-LoopProposalBody {
   param([hashtable]$Finding, [string]$Draft)
   return $Draft   # the verified entry IS the proposal body (v1 behavior)
+}
+
+function Test-LoopStale {
+  # Optional cell contract function (2026-08-07). A proposal served by a
+  # non-auto_apply endpoint queues for the human walk and can sit for days; the gap it
+  # describes may be closed by hand in the meantime. Applying it then writes a DUPLICATE
+  # (2026-08-01a: queued 08-02, entry hand-written before the 08-07 walk, applied blind).
+  # Re-check the invariant at apply time against the SAME signal detection uses - the
+  # handoff wikilink (the detector's per-handoff check) - not the drafted subject text, which
+  # differs from a hand-written entry's wording and so slid past the first-line guard.
+  # Returns a reason string when the proposal is a no-op; $null when it still applies.
+  param([string]$Change, [hashtable]$Fields, [string]$Body, [string]$Root)
+  $sessionLog = Join-Path $Root '_meta/session-log.md'
+  switch ($Change) {
+    'regenerate-session-log' {
+      if (-not (Test-Path $sessionLog)) { return $null }
+      $logRaw = (Get-Content -Path $sessionLog -Raw -Encoding UTF8) -replace "`r`n","`n"
+      $hBase = if ($Fields.ContainsKey('handoff')) { [string]$Fields['handoff'] } else { '' }
+      if ($hBase -and ($logRaw.Contains("[[$hBase]]") -or $logRaw.Contains("[[$hBase|"))) {
+        return "session-log already links [[$hBase]] - gap closed since this proposal was generated"
+      }
+      return $null
+    }
+    'bump-home-updated' {
+      # Self-correcting by construction (recomputes newest at apply time), so it is only
+      # stale when HOME's stamp already equals that value - then the write is a no-op.
+      if (-not (Test-Path $sessionLog)) { return $null }
+      $newest = $null
+      foreach ($line in (Get-Content -Path $sessionLog -Encoding UTF8)) {
+        if ($line -match '^## (\d{4}-\d{2}-\d{2})') { $newest = $Matches[1]; break }
+      }
+      $homeFile = Join-Path $Root '_meta/HOME.md'
+      if ($newest -and (Test-Path $homeFile) -and ((Get-Content -Path $homeFile -Raw -Encoding UTF8) -match '(?m)^updated:\s*(\d{4}-\d{2}-\d{2})')) {
+        if ($Matches[1] -eq $newest) { return "HOME.md updated: is already $newest - nothing to bump" }
+      }
+      return $null
+    }
+    default { return $null }
+  }
 }
 
 function Invoke-LoopRepair {
   param([string]$Change, [hashtable]$Fields, [string]$Body, [string]$Root)
   $sessionLog = Join-Path $Root '_meta/session-log.md'
   switch ($Change) {
-    'prepend-session-log-entry' {
+    'regenerate-session-log' {
+      $staleReason = Test-LoopStale -Change $Change -Fields $Fields -Body $Body -Root $Root
+      if ($staleReason) { throw "Already applied: $staleReason" }
+      $builder = Join-Path (Split-Path -Parent $PSScriptRoot) 'build-session-log.ps1'
+      if (-not (Test-Path $builder)) { throw "build-session-log.ps1 not found at $builder" }
+      $out = & $builder -Root $Root *>&1 | ForEach-Object { "$_" }
+      $hBase = if ($Fields.ContainsKey('handoff')) { [string]$Fields['handoff'] } else { '' }
       $logRaw = (Get-Content -Path $sessionLog -Raw -Encoding UTF8) -replace "`r`n","`n"
-      $entryFirstLine = ($Body -split "`n")[0]
-      if ($logRaw.Contains($entryFirstLine)) { throw "Already applied: session-log contains '$entryFirstLine'" }
-      $lines = $logRaw -split "`n"
-      # newest-at-top: insert above the first entry OLDER than this one (below any
-      # same-date entries); falls back to top-of-entries / end-of-file.
-      $entryDate = [string]$Fields['entry_date']
-      $insertAt = -1; $firstEntry = -1
-      for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -match '^## (\d{4}-\d{2}-\d{2})') {
-          if ($firstEntry -lt 0) { $firstEntry = $i }
-          if ($Matches[1] -lt $entryDate) { $insertAt = $i; break }
-        }
+      if ($hBase -and -not ($logRaw.Contains("[[$hBase]]") -or $logRaw.Contains("[[$hBase|"))) {
+        throw "regenerated, but [[$hBase]] still absent - handoff predates the generated region's since= cut or failed to parse; needs a hand entry below the END marker. builder: $($out -join ' | ')"
       }
-      if ($insertAt -lt 0) { $insertAt = if ($firstEntry -ge 0 -and -not $entryDate) { $firstEntry } else { $lines.Count } }
-      # bounds-safe slicing: insertAt may be 0 (top) or $lines.Count (append) - a raw
-      # range would wrap/overrun under StrictMode (found by rehearsal 2026-07-03)
-      $head = if ($insertAt -gt 0) { @($lines[0..($insertAt-1)]) } else { @() }
-      $tail = if ($insertAt -lt $lines.Count) { @($lines[$insertAt..($lines.Count-1)]) } else { @() }
-      $new = $head + @(($Body -replace "`r`n","`n") -split "`n") + @('') + $tail
-      [System.IO.File]::WriteAllText($sessionLog, (($new -join "`n").TrimEnd("`n") + "`n"), [System.Text.UTF8Encoding]::new($false))
-      return "applied: entry for $entryDate prepended to _meta/session-log.md"
-    }
-    'bump-home-updated' {
+      return ("applied: session-log generated region rebuilt from handoffs ({0})" -f (($out | Where-Object { $_ -match '\[session-log\]' } | Select-Object -First 1) -replace '^\[session-log\]\s*',''))
+    }    'bump-home-updated' {
       $newest = $null
       foreach ($line in (Get-Content -Path $sessionLog -Encoding UTF8)) {
         if ($line -match '^## (\d{4}-\d{2}-\d{2})') { $newest = $Matches[1]; break }   # newest-at-top
@@ -176,7 +196,7 @@ function Get-LoopCascadeFindings {
   if ($script:WrapTailHomeStale) { return @() }   # already offered in the main pass
   $maxDate = $null
   foreach ($f in $Applied) {
-    if ($f.change -ne 'prepend-session-log-entry') { continue }
+    if ($f.change -ne 'regenerate-session-log') { continue }
     $d = [string]$f.fields['entry_date']
     if ($d -and ($null -eq $maxDate -or $d -gt $maxDate)) { $maxDate = $d }
   }
