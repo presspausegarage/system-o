@@ -26,11 +26,15 @@
        SKIPPED rather than APPLIED, degrades honestly with no email config and
        with an undecryptable one, refuses a config stored inside the vault,
        and declines setup cleanly in non-interactive mode.
-    9. Loop layer full circle via the stub driver (spec §Measured conformance's
-       conformance vehicle, REQUIRED per D6, not optional): a seeded
-       session-log gap + stale HOME is detected, proposed via a canned stub
-       endpoint, verified, auto-applied, HOME cascades, and the detector
-       self-clears on the next pass.
+    9. Loop layer full circle, LLM-free (spec v0.4): a seeded session-log gap +
+       stale HOME is detected, the wrap-tail cell proposes a DETERMINISTIC
+       regenerate (build-session-log.ps1 derives the generated region from
+       handoffs - no endpoint is called), it auto-applies under the
+       'deterministic' allowlist entry, the seeded handoff lands in the
+       generated region exactly once, a second regenerate is byte-identical,
+       HOME cascades, and the detector self-clears. The stub-driver LLM circle
+       (spec §Measured conformance's conformance vehicle, REQUIRED per D6)
+       lives in check 10.
     10. Second-loop full circle (the v2 runner-seam proof): the shipped
        kanban-handoff-reconciler cell - different detector, verifier id, and
        repair types - runs through the same generic runner from a manifest +
@@ -145,7 +149,7 @@ tags:
 # Conformance fixture handoff
 
 Synthetic handoff seeded by run-conformance-test.ps1 to exercise the
-wrap-tail-repair loop cell's stub driver. Safe to delete.
+wrap-tail-repair loop cell's deterministic regenerate. Safe to delete.
 "@ | Set-Content -Path (Join-Path $handoffsDir "$handoffBase.md") -Encoding UTF8
 
   # Seed one pre-existing session-log entry ($preDate, outside the window) so the
@@ -156,7 +160,11 @@ wrap-tail-repair loop cell's stub driver. Safe to delete.
   $logFile = Join-Path $VaultRoot '_meta/session-log.md'
   $logRawPre = Get-Content -Path $logFile -Raw -Encoding UTF8
   $seedEntry = "`n## $preDate $em conformance fixture seed`n- Pre-existing entry seeded by run-conformance-test.ps1 to establish a newest-logged date. Time spent: n/a.`n"
+  # bootstrap declares the generated region with since=<bootstrap date>; the fixture handoff is
+  # dated earlier, so widen the cut to cover it (an adopter sets since= once, at adoption)
+  $logRawPre = $logRawPre -replace '<!-- SESSION-LOG:START since=\d{4}-\d{2}-\d{2} -->', "<!-- SESSION-LOG:START since=$preDate -->"
   Set-Content -Path $logFile -Value ($logRawPre.TrimEnd() + "`n" + $seedEntry) -Encoding UTF8 -NoNewline
+  Record 'loop: bootstrap declared the session-log generated region' ($logRawPre.Contains('<!-- SESSION-LOG:END -->'))
 
   # HOME stale relative to that seeded entry (not yet relative to the fixture gap,
   # which has no session-log entry at all - that's the gap under test)
@@ -171,18 +179,15 @@ wrap-tail-repair loop cell's stub driver. Safe to delete.
   $foundStale = ($detectOut1 -match 'HOME stale: [1-9]')
   Record 'loop: detector finds the seeded gap + stale HOME' ($foundGap -and $foundStale) $detectOut1.Trim()
 
-  # 2. canned stub response - deliberately built to pass run-loop.ps1's structural verifier
+  # 2. no canned response: this cell has no LLM findings (spec v0.4). The stub endpoint
+  #    below exists only so the manifest schema holds; the runner must never call it.
   $fixDir = Join-Path $VaultRoot '_meta/loops/.conformance-fixtures'
   New-Item -ItemType Directory -Path $fixDir -Force | Out-Null
-  $em = [char]0x2014
-  $stubResponse = "## $fixDate $em conformance fixture wrap`n- Repaired by the conformance harness's stub endpoint. Time spent: n/a.`n[[$handoffBase]]`n"
-  Set-Content -Path (Join-Path $fixDir 'stub-response.md') -Value $stubResponse -Encoding UTF8 -NoNewline
+  Set-Content -Path (Join-Path $fixDir 'stub-response.md') -Value 'UNUSED - the wrap-tail cell proposes deterministically; if this text ever lands anywhere the cell regressed to LLM drafting' -Encoding UTF8 -NoNewline
 
-  # 3. temp manifest: driver=stub, apply=auto. 'deterministic' is included in the
-  #    allowlist alongside stub/canned so the HOME-cascade bump (always
-  #    system-computed, never model output) also auto-applies in this fixture -
-  #    this is the harness's own throwaway manifest, not the shipped example,
-  #    so it's safe to earn auto here without touching real trust policy.
+  # 3. temp manifest: apply=auto with ONLY 'deterministic' allowlisted - the regenerate and
+  #    the HOME bump are both system-computed. This is the harness's own throwaway
+  #    manifest, not the shipped example.
   $manifestFile = Join-Path $fixDir 'wrap-tail-conformance.yaml'
   @"
 loop: wrap-tail-repair
@@ -197,7 +202,6 @@ detect:
 verify: structural
 apply: auto
 auto_apply_endpoints:
-  - stub/canned
   - deterministic
 promote_after: 5
 endpoints:
@@ -210,16 +214,22 @@ budget:
 prompt: loop-wrap-tail-repair.prompt.md
 "@ | Set-Content -Path $manifestFile -Encoding UTF8
 
-  # 4. run the cell for real
+  # 4. run the cell for real (no endpoint may be called)
   $loopOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'run-loop.ps1') -Manifest $manifestFile -Root $VaultRoot 2>&1 | Out-String
   $statusLine = (($loopOut -split "`n") | Where-Object { $_ -match '^STATUS ' } | Select-Object -Last 1)
   $autoApplied = ($statusLine -match 'auto_applied=(\d+)') -and ([int]$Matches[1] -ge 1)
   $verifierClean = -not (($statusLine -match 'verifier_fail=(\d+)') -and ([int]$Matches[1] -gt 0))
-  Record 'loop: stub proposal verifies + auto-applies' ($autoApplied -and $verifierClean) $statusLine
+  $noEndpointCalled = -not ($loopOut -match 'proposing via')
+  Record 'loop: deterministic regenerate auto-applies, no endpoint called' ($autoApplied -and $verifierClean -and $noEndpointCalled) $statusLine
 
-  # 5. session-log carries the applied entry + wikilink
+  # 5. the seeded handoff landed INSIDE the generated region, exactly once, and the stub text never did
   $logRaw = Get-Content -Path (Join-Path $VaultRoot '_meta/session-log.md') -Raw -Encoding UTF8
-  Record 'loop: auto-applied entry landed in session-log.md' ($logRaw.Contains("[[$handoffBase]]"))
+  $regionNow = [regex]::Match($logRaw, '(?s)<!-- SESSION-LOG:START.*?<!-- SESSION-LOG:END -->').Value
+  $hits = ([regex]::Matches($logRaw, [regex]::Escape("[[$handoffBase]]"))).Count
+  Record 'loop: regenerated entry landed in the generated region exactly once' ($regionNow.Contains("[[$handoffBase]]") -and $hits -eq 1 -and -not $logRaw.Contains('UNUSED - the wrap-tail cell')) "hits=$hits"
+  # 5b. derivation is deterministic: a second regenerate is a no-op (byte-identical region)
+  $regenOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'build-session-log.ps1') -Root $VaultRoot -DryRun 2>&1 | Out-String
+  Record 'loop: second regenerate is byte-identical (changed=False)' ($regenOut -match 'changed=False') $regenOut.Trim()
 
   # 6. HOME cascade bumped past the seeded stale date
   $homeRaw = Get-Content -Path $homeFile -Raw -Encoding UTF8

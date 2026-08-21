@@ -216,6 +216,23 @@ if (Test-Path $linter) {
   Write-Log "lint: WARN linter script missing at $linter - skipped"
 }
 
+# --- Session-log generated region (spec v0.4) ---
+# The session log's generated region is derived from handoffs by build-session-log.ps1.
+# Regenerate it here, BEFORE any reconciliation pass, so a handoff written today is
+# indexed tonight and a guard only ever sees real gaps (handoff-less sessions).
+# Deterministic and idempotent; a failure is logged, never fatal to the sweep.
+$logBuilder = Join-Path $PSScriptRoot 'build-session-log.ps1'
+if (Test-Path $logBuilder) {
+  try {
+    $lbOut = & $logBuilder -Root $Root *>&1
+    foreach ($line in $lbOut) { Write-Log ('session-log | ' + $line) }
+  } catch {
+    Write-Log ('session-log: WARN build-session-log threw: ' + $_.Exception.Message)
+  }
+} else {
+  Write-Log "session-log: WARN build-session-log.ps1 missing at $logBuilder - generated region not refreshed"
+}
+
 # --- Session-log reconciliation ---
 # Not part of this port (see .DESCRIPTION) -- guarded no-op if absent, same
 # as the other two passes, so an adopter who later builds or ports their own

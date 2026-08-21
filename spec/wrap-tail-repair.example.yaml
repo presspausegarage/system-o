@@ -1,5 +1,8 @@
 # Loop manifest - wrap-tail-repair (canonical example, spec §Loop manifest)
-# Schema: loop cell = detect (script) -> propose (LLM) -> verify (script) -> apply (gated).
+# Schema: loop cell = detect (script) -> propose (LLM or deterministic) -> verify (script) -> apply (gated).
+# Spec v0.4: this cell's session-log repair is DETERMINISTIC (build-session-log.ps1 derives the
+# log's generated region from handoffs); its endpoints below are never called for it and exist
+# as the worked example of an endpoint chain. The LLM-in-the-loop cell is kanban-handoff-reconciler.
 # Consumed by reference/scripts/run-loop.ps1. Policy lives HERE, not in prompts or code.
 #
 # This is the reference implementation's example loop: it maintains the invariant
@@ -31,8 +34,8 @@ detect:
   script: detect-wrap-tail.ps1
   args: -DryRun
 
-# verify: structural - deterministic checks in run-loop.ps1 (format, date, handoff wikilink,
-# single header, bullet tail). Full-circle verification = the detector self-clears.
+# verify: structural - kept for the contract; this cell has no drafted proposals to verify
+# (Test-LoopDraft refuses any draft). Full-circle verification = the detector self-clears.
 verify: structural
 
 # propose-only until earned: run for real, review proposals, then a human flips this
@@ -40,8 +43,12 @@ verify: structural
 # structural pass rate - see spec §Measured conformance). Scope here is risk<=2-equivalent
 # (session-log + HOME only); never enable auto-apply on a scope that touches irreversible
 # or high-consequence state.
-apply: propose-only
-auto_apply_endpoints: []
+# 'deterministic' is the runner's endpoint name for system-computed proposals (the regenerate
+# and the HOME bump): a pure function of the vault, safe to apply inline. LLM endpoints stay
+# off the allowlist until earned.
+apply: auto
+auto_apply_endpoints:
+  - deterministic
 promote_after: 5
 
 # Priority order. Degradation is REQUIRED design (spec §Endpoint degradation): the first
