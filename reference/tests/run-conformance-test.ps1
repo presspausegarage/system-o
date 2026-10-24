@@ -42,7 +42,11 @@
        and D2 (complete handoff citing an open task) drift is detected,
        proposed propose-only via the stub endpoint, applied through
        apply-loop-proposal.ps1, and the detector self-clears.
-    11. (docker only) crontab installed with $VAULT_ROOT substituted
+    11. Ledger timestamps: both ledger writers (runner and applier) stamp ts
+       as ISO 8601 local time with an explicit UTC offset, a legacy
+       offset-less ts still reads as local time, and the dawn report counts a
+       mixed old/new ledger by instant rather than by string prefix.
+    12. (docker only) crontab installed with $VAULT_ROOT substituted
 
   Exits 0 only if every check passes; nonzero otherwise. Human-readable
   PASS/FAIL lines to stdout plus a summary report file.
@@ -355,6 +359,85 @@ prompt: loop-kanban-handoff-reconciler.prompt.md
   Record 'loop2: detector self-clears after apply' ($det2 -match '0 ready-but-done, 0 cited-but-open') $det2.Trim()
 }
 
+# --- Ledger timestamps (spec §Loop manifest, Runner semantics) ---------------
+# Runs after both loop circles, so the runner and the applier have each written
+# real ledger records into this vault.
+function Test-LedgerTimestamps {
+  param([string]$VaultRoot)
+
+  $scriptsDir = Join-Path $VaultRoot '_meta/scripts'
+  $loopsDir = Join-Path $VaultRoot '_meta/loops'
+  $logsDir = Join-Path $VaultRoot '_meta/logs'
+  $inv = [System.Globalization.CultureInfo]::InvariantCulture
+  . (Join-Path $scriptsDir '_ledger-time.ps1')
+
+  # 1. New records: read the raw bytes, not ConvertFrom-Json, which would
+  #    coerce ts to [datetime] and hide the written form.
+  $isoOffset = '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$'
+  $lines = @(Get-ChildItem -Path $loopsDir -Filter '*.ledger.jsonl' -File | ForEach-Object { Get-Content -Path $_.FullName -Encoding UTF8 } | Where-Object { $_.Trim() })
+  $stamps = @($lines | ForEach-Object { if ($_ -match '"ts":"([^"]*)"') { $Matches[1] } else { '<missing>' } })
+  $bad = @($stamps | Where-Object { $_ -notmatch $isoOffset })
+  $runnerRecs = @($lines | Where-Object { $_ -match '"verifier":' }).Count
+  $applierRecs = @($lines | Where-Object { $_ -match '"outcome":' }).Count
+  $now = [datetimeoffset]::Now
+  $stale = @($stamps | Where-Object { $_ -match $isoOffset } | Where-Object { [math]::Abs(((ConvertFrom-LedgerTimestamp $_) - $now).TotalHours) -gt 1 })
+  $sample = if ($stamps.Count -gt 0) { $stamps[-1] } else { '' }
+  Record 'ledger: runner and applier stamp ts as ISO 8601 with explicit offset' ($stamps.Count -gt 0 -and $runnerRecs -gt 0 -and $applierRecs -gt 0 -and $bad.Count -eq 0 -and $stale.Count -eq 0) "records=$($stamps.Count) runner=$runnerRecs applier=$applierRecs bad=$($bad.Count) sample=$sample"
+
+  # 2. Old records: an offset-less ts is the writer's local wall clock. It must
+  #    read back as that wall clock at this host's offset for that date, both
+  #    as a raw string and as the [datetime] ConvertFrom-Json hands a reader.
+  $legacy = '2026-03-01T09:30:00'
+  $legacyWall = [datetime]::ParseExact($legacy, 'yyyy-MM-ddTHH:mm:ss', $inv)
+  $localOffset = [System.TimeZoneInfo]::Local.GetUtcOffset($legacyWall)
+  $fromString = ConvertFrom-LedgerTimestamp $legacy
+  $fromJson = ConvertFrom-LedgerTimestamp (('{"ts":"' + $legacy + '"}' | ConvertFrom-Json).ts)
+  $offsetUtc = (ConvertFrom-LedgerTimestamp '2026-03-01T09:30:00+05:30').UtcDateTime
+  $zuluUtc = (ConvertFrom-LedgerTimestamp '2026-03-01T04:00:00Z').UtcDateTime
+  $roundTrip = ConvertFrom-LedgerTimestamp (Get-LedgerTimestamp -At $fromString)
+  $legacyOk = $fromString -and $fromString.DateTime -eq $legacyWall -and $fromString.Offset -eq $localOffset -and
+    $fromJson -and $fromJson -eq $fromString -and
+    $offsetUtc -eq [datetime]::new(2026, 3, 1, 4, 0, 0) -and $zuluUtc -eq $offsetUtc -and
+    $roundTrip -eq $fromString -and $null -eq (ConvertFrom-LedgerTimestamp 'not-a-date')
+  Record 'ledger: legacy offset-less ts reads as local time' ([bool]$legacyOk) "legacy=$legacy parsed=$(if ($fromString) { Get-LedgerTimestamp -At $fromString }) via-json=$(if ($fromJson) { Get-LedgerTimestamp -At $fromJson })"
+
+  # 3. Mixed ledger through the dawn report: the reader counts records by the
+  #    local day their instant falls on. Five dated records, three on $today:
+  #    a legacy one, a new local one, and the same local noon written at a
+  #    foreign offset whose date prefix is NOT $today. The two decoys are a
+  #    legacy record from yesterday and a foreign-offset record whose prefix
+  #    IS $today but whose instant is not - a prefix match gets both wrong.
+  $today = Get-Date -Format 'yyyy-MM-dd'
+  $todayWall = [datetime]::ParseExact($today, 'yyyy-MM-dd', $inv)
+  $noon = [datetimeoffset]::new([datetime]::SpecifyKind($todayWall.AddHours(12), [System.DateTimeKind]::Local))
+  $foreignNoon = @([timespan]::FromHours(14), [timespan]::FromHours(-12) | ForEach-Object { Get-LedgerTimestamp -At $noon.ToOffset($_) } | Where-Object { -not $_.StartsWith($today) } | Select-Object -First 1)
+  $prefixDecoy = @("${today}T23:30:00-12:00", "${today}T00:30:00+14:00" | Where-Object { (ConvertFrom-LedgerTimestamp $_).ToLocalTime().ToString('yyyy-MM-dd', $inv) -ne $today } | Select-Object -First 1)
+  $yesterday = $todayWall.AddDays(-1).ToString('yyyy-MM-dd', $inv)
+  $fixtureLoop = 'ledger-ts-fixture'
+  $manifestPath = Join-Path $loopsDir "$fixtureLoop.yaml"
+  $ledgerPath = Join-Path $loopsDir "$fixtureLoop.ledger.jsonl"
+  $loopLogPath = Join-Path $logsDir "loop-$fixtureLoop-$today.log"
+  "loop: $fixtureLoop`ninvariant: conformance-test fixture (dawn report reads its ledger)`n" | Set-Content -Path $manifestPath -Encoding UTF8
+  'STATUS loop=ledger-ts-fixture findings=1 proposals_new=1 auto_applied=0 verifier_fail=0 scope_fail=0' | Set-Content -Path $loopLogPath -Encoding UTF8
+  @(
+    "{`"loop`":`"$fixtureLoop`",`"verifier`":`"pass`",`"ts`":`"${today}T09:00:00`"}"
+    "{`"loop`":`"$fixtureLoop`",`"verifier`":`"pass`",`"ts`":`"$(Get-LedgerTimestamp -At $noon)`"}"
+    "{`"loop`":`"$fixtureLoop`",`"outcome`":`"applied`",`"ts`":`"$($foreignNoon[0])`"}"
+    "{`"loop`":`"$fixtureLoop`",`"verifier`":`"pass`",`"ts`":`"${yesterday}T23:59:59`"}"
+    "{`"loop`":`"$fixtureLoop`",`"outcome`":`"rejected`",`"ts`":`"$($prefixDecoy[0])`"}"
+    "{`"loop`":`"$fixtureLoop`",`"outcome`":`"rejected`",`"ts`":`"not-a-date`"}"
+  ) | Set-Content -Path $ledgerPath -Encoding UTF8
+  try {
+    $mixedOut = & pwsh -NoProfile -File (Join-Path $scriptsDir 'build-dawn-report.ps1') -Root $VaultRoot -Date $today 2>&1 | Out-String
+    $mixedHtmlPath = Join-Path $logsDir "dawn-report-$today.html"
+    $mixedHtml = if (Test-Path $mixedHtmlPath) { Get-Content -Path $mixedHtmlPath -Raw -Encoding UTF8 } else { '' }
+    $counted = if ($mixedHtml -match 'ledger: (\d+) events on') { $Matches[1] } else { 'none' }
+    Record 'ledger: dawn report counts a mixed old/new ledger by instant' ($LASTEXITCODE -eq 0 -and $mixedHtml -match "ledger: 3 events on $today") "counted=$counted expected=3 foreign-noon=$($foreignNoon[0]) prefix-decoy=$($prefixDecoy[0])"
+  } finally {
+    Remove-Item -Path $manifestPath, $ledgerPath, $loopLogPath -Force -ErrorAction SilentlyContinue
+  }
+}
+
 # --- Dawn crossing report ---------------------------------------------------
 function Test-DawnReport {
   param([string]$VaultRoot)
@@ -542,6 +625,7 @@ function Test-Vault {
   Test-DawnReport -VaultRoot $VaultRoot
   Test-LoopFullCircle -VaultRoot $VaultRoot
   Test-ReconcilerFullCircle -VaultRoot $VaultRoot
+  Test-LedgerTimestamps -VaultRoot $VaultRoot
 }
 
 try {

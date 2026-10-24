@@ -41,6 +41,7 @@ if (-not $TextOutPath) { $TextOutPath = Join-Path $logsDir "dawn-report-$Date.tx
 $builtAt = Get-Date
 
 . (Join-Path $PSScriptRoot '_dawn-status.ps1')
+. (Join-Path $PSScriptRoot '_ledger-time.ps1')
 
 $glyph = @{ clean = '&#10003;'; applied = '&#8677;'; proposed = '&#8594;'; held = '&#8214;'; finding = '&#9650;'; skipped = '&#215;' }
 $word = @{ clean = 'CLEAN'; applied = 'APPLIED'; proposed = 'PROPOSED'; held = 'HELD'; finding = 'FINDING'; skipped = 'SKIPPED' }
@@ -158,9 +159,13 @@ foreach ($spec in $surfaceSpecs) {
     $ledgerEvents = @()
     if (Test-Path $ledgerPath) {
       $ledgerEvents = @(Get-Content -Path $ledgerPath -Encoding UTF8 | ForEach-Object {
+        # Count by instant, not by string prefix: ConvertFrom-Json coerces ts
+        # to [datetime], and an offset ts belongs to the day its instant falls
+        # on here. Legacy offset-less ts reads as local (_ledger-time.ps1).
         try {
           $record = $_ | ConvertFrom-Json
-          if ([string]$record.ts -like "$Date*") { $record }
+          $at = ConvertFrom-LedgerTimestamp $record.ts
+          if ($at -and $at.ToLocalTime().ToString('yyyy-MM-dd', [System.Globalization.CultureInfo]::InvariantCulture) -eq $Date) { $record }
         } catch {}
       })
     }

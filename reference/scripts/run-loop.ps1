@@ -145,6 +145,8 @@ if ($CellContract['verifier'] -ne $verifierId) {
   throw "Manifest declares verify: '$verifierId' but cell $($mf['cell']) implements '$($CellContract['verifier'])' - refusing (a manifest's declared policy must match the code that enforces it)."
 }
 
+. (Join-Path $PSScriptRoot '_ledger-time.ps1')   # ledger ts format, shared with the applier and dawn report
+
 $proposalsDir = Join-Path $Root '_meta/loops/proposals'
 $ledgerFile   = Join-Path $Root ("_meta/loops/{0}.ledger.jsonl" -f $loopName)
 $maxPrompt    = [int]($mf.budget['max_prompt_chars'] ?? 24000)
@@ -242,7 +244,7 @@ function Write-Proposal {
 
 function Add-Ledger {
   param([hashtable]$Rec)
-  $Rec['ts'] = Get-Date -Format 'yyyy-MM-ddTHH:mm:ss'
+  $Rec['ts'] = Get-LedgerTimestamp
   Add-Content -Path $ledgerFile -Value ($Rec | ConvertTo-Json -Compress) -Encoding UTF8
 }
 
