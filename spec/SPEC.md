@@ -513,6 +513,8 @@ Conformance requirements for any loop-runner implementation:
 - A repair that deterministically creates a new finding inside the same loop's scope is **proposed** in the same run - and applied where the apply mode and allowlist permit - not deferred to the next
 - Every proposal event (emitted, applied, rejected) appends one ledger record; the ledger, together with the run log's per-endpoint attempt record, is the evidence base for apply-mode promotion and endpoint trust
 - Ledger records are JSON objects parsed by key; consumers must not depend on key order or line position
+- Every ledger record carries `ts`, the event time as ISO 8601 with an explicit UTC offset: `yyyy-MM-ddTHH:mm:ss+HH:mm` (e.g. `2026-10-24T14:03:11+01:00`; a trailing `Z` is equivalent to `+00:00`). Writers stamp the vault host's local wall clock with its offset, so the date prefix names the same calendar day as the run log while the instant stays unambiguous
+- Consumers compare `ts` as an instant, never by string prefix, and must accept a legacy offset-less `ts` (`yyyy-MM-ddTHH:mm:ss`, written before the offset was required) as the vault host's local time, so existing ledgers keep working; a ledger may mix both forms
 
 ### Determinism guarantees
 

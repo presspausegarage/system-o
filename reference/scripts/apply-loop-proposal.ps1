@@ -52,10 +52,12 @@ $target = [string]($fm['target'] ?? '')
 if (-not $change) { throw "File has no proposed_change field: $File" }
 if (-not $loop)   { throw "File has no loop field: $File" }
 
+. (Join-Path $PSScriptRoot '_ledger-time.ps1')
+
 function Add-Ledger {
   param([string]$Outcome)
   $ledger = Join-Path $Root ("_meta/loops/{0}.ledger.jsonl" -f $loop)
-  $rec = @{ loop = $loop; change = $change; outcome = $Outcome; ts = Get-Date -Format 'yyyy-MM-ddTHH:mm:ss' }
+  $rec = @{ loop = $loop; change = $change; outcome = $Outcome; ts = Get-LedgerTimestamp }
   foreach ($k in $fm.Keys) {
     if ($k -in 'type','loop','proposed_change','endpoint','generated','tags') { continue }
     if ([string]$fm[$k]) { $rec[$k] = [string]$fm[$k] }
